@@ -5,9 +5,10 @@ import org.opencv.core.Scalar;
 
 @Config
 public class RobotConstants {
-    //Blue values
+    //Ball seek rotation power factor
     public static double ROTATE_FACTOR = 1.0 / 400;
 
+    //Blue values
     public static int color_lower_h = 50;
     public static int color_lower_s = 100;
     public static int color_lower_v = 100;
