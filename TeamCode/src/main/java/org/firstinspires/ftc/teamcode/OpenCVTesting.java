@@ -130,7 +130,8 @@ public class OpenCVTesting extends LinearOpMode {
                  * For a rear facing camera or a webcam, rotation is defined assuming the camera is facing
                  * away from the user.
                  */
-                webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);
+                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
+//                webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);
             }
 
             @Override
@@ -144,8 +145,23 @@ public class OpenCVTesting extends LinearOpMode {
 
     }
 
+    private void displayTelemetry(){
+        telemetry.addData("Frame Count", webcam.getFrameCount());
+        telemetry.addData("FPS", String.format("%.2f", webcam.getFps()));
+        telemetry.addData("Total frame time ms", webcam.getTotalFrameTimeMs());
+        telemetry.addData("Pipeline time ms", webcam.getPipelineTimeMs());
+        telemetry.addData("Overhead time ms", webcam.getOverheadTimeMs());
+        telemetry.addData("Theoretical max FPS", webcam.getCurrentPipelineMaxFps());
+
+        telemetry.addData("Ball X", RobotConstants.ballX);
+        telemetry.addData("Ball Y", RobotConstants.ballY);
+        telemetry.addData("Ball Found", RobotConstants.ballExists);
+        telemetry.addData("Ball area", RobotConstants.foundBallArea);
+        updateTelemetry(telemetry);
+    }
 
     public void runOpMode()  {
+        double rotatePower;
         initializeDashboard();
         initializeMotors();
         initializeVision();
@@ -153,25 +169,18 @@ public class OpenCVTesting extends LinearOpMode {
 
         waitForStart();
         while (opModeIsActive()) {
-            telemetry.addData("Frame Count", webcam.getFrameCount());
-            telemetry.addData("FPS", String.format("%.2f", webcam.getFps()));
-            telemetry.addData("Total frame time ms", webcam.getTotalFrameTimeMs());
-            telemetry.addData("Pipeline time ms", webcam.getPipelineTimeMs());
-            telemetry.addData("Overhead time ms", webcam.getOverheadTimeMs());
-            telemetry.addData("Theoretical max FPS", webcam.getCurrentPipelineMaxFps());
-
-            telemetry.addData("Ball X", RobotConstants.ballX);
-            telemetry.addData("Ball Y", RobotConstants.ballY);
-            telemetry.addData("Ball Found", RobotConstants.ballExists);
-            updateTelemetry(telemetry);
-
-            double rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR;
-
+            displayTelemetry();
+            if (RobotConstants.ballExists) {
+                rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR;
+            }
+            else {
+                rotatePower = 0.0;
+            }
             frontLeftDrive.setPower(-rotatePower);
             frontRigtDrive.setPower(rotatePower);
             backLeftDrive.setPower(-rotatePower);
             backRightDrive.setPower(rotatePower);
-        }
+      }
     }
 
 
@@ -212,7 +221,7 @@ public class OpenCVTesting extends LinearOpMode {
              */
 
             boolean foundBall = false;
-
+            Mat DisplayImage = input.clone();
             //Convert to HSV for better color range definition
             Imgproc.cvtColor(input, input, Imgproc.COLOR_RGB2HSV);
             //Filter pixels outside the desired color range
@@ -242,7 +251,8 @@ public class OpenCVTesting extends LinearOpMode {
                     //bounding_rect=boundingRect(contours[i]); // Find the bounding rectangle for biggest contour
                 }
             }
-            //Draw the contours
+            RobotConstants.foundBallArea = largest_area;
+            //Find the contours and bounding regions
             MatOfPoint2f[] contoursPoly = new MatOfPoint2f[contours.size()];
             Rect[] boundRect = new Rect[contours.size()];
             Point[] centers = new Point[contours.size()];
@@ -259,7 +269,7 @@ public class OpenCVTesting extends LinearOpMode {
                 contoursPolyList.add(new MatOfPoint(poly.toArray()));
             }
             //Convert the image back to RGB for color drawing
-            Imgproc.cvtColor(input, input, Imgproc.COLOR_GRAY2RGB);
+            //Not needed now since drawing on the original image Imgproc.cvtColor(input, input, Imgproc.COLOR_GRAY2RGB);
             int R;
             int G;
             int B;
@@ -276,29 +286,30 @@ public class OpenCVTesting extends LinearOpMode {
                  }
                  Scalar color = new Scalar(R, G, B);
                 if (RobotConstants.drawContours == 1) {
-                    Imgproc.drawContours(input, contoursPolyList, i, color);
+                    Imgproc.drawContours(DisplayImage, contoursPolyList, i, color);
                 }
                 if (RobotConstants.drawRectangle == 1) {
-                    Imgproc.rectangle(input, boundRect[i].tl(), boundRect[i].br(), color, 2);
+                    Imgproc.rectangle(DisplayImage, boundRect[i].tl(), boundRect[i].br(), color, 2);
                 }
                 if (RobotConstants.drawCircle == 1) {
-                    Imgproc.circle(input, centers[i], (int) radius[i][0], color, 2);
+                    Imgproc.circle(DisplayImage, centers[i], (int) radius[i][0], color, 2);
                 }
             }
 
             RobotConstants.ballExists = foundBall;
 
              if (foundBall) {
-                 RobotConstants.ballX = centers[largest_contour_index].x - (input.width() / 2);
-                 RobotConstants.ballY = centers[largest_contour_index].y - (input.height() / 2);
+                 RobotConstants.ballX = centers[largest_contour_index].x - (input.width() / 2.0);
+                 RobotConstants.ballY = centers[largest_contour_index].y - (input.height() / 2.0);
              }
 
-             /**
+             /*
              * NOTE: to see how to get data from your pipeline to your OpMode as well as how
              * to change which stage of the pipeline is rendered to the viewport when it is
              * tapped, please see {@link PipelineStageSwitchingExample}
              */
-
+            DisplayImage.copyTo(input);
+             DisplayImage.release();
             return input;
         }
 
