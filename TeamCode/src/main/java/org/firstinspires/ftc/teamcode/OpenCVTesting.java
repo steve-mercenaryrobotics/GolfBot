@@ -175,11 +175,11 @@ public class OpenCVTesting extends LinearOpMode {
         telemetry.addData("Pipeline time ms", webcam.getPipelineTimeMs());
         telemetry.addData("Overhead time ms", webcam.getOverheadTimeMs());
         telemetry.addData("Theoretical max FPS", webcam.getCurrentPipelineMaxFps());
-
+*/
         telemetry.addData("Ball X", RobotConstants.ballX);
         telemetry.addData("Ball Y", RobotConstants.ballY);
         telemetry.addData("Ball Found", RobotConstants.ballExists);
-        telemetry.addData("Ball area", RobotConstants.foundBallArea);*/
+        telemetry.addData("Ball area", RobotConstants.foundBallArea);
 
         telemetry.addData("state", currentState);
 
@@ -202,8 +202,8 @@ public class OpenCVTesting extends LinearOpMode {
             rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR;
             // rotatePower = 0.0;
             if (Math.abs(RobotConstants.ballX) < 5) {
-                //rotatePower = 0.0;
-                //currentState = State.DRIVE_TO_BALL;
+                rotatePower = 0.0;
+                currentState = State.DRIVE_TO_BALL;
             }
         } else {
             rotatePower = 0.0;
@@ -247,10 +247,13 @@ public class OpenCVTesting extends LinearOpMode {
             switch (currentState) {
                 case OFF:
                     offState();
+                    break;
                 case FIND_BALL:
                     findBall();
+                    break;
                 case DRIVE_TO_BALL:
                     driveToBall();
+                    break;
             }
         } else {
             offState();
@@ -271,6 +274,7 @@ public class OpenCVTesting extends LinearOpMode {
             displayTelemetry();
             processStateMachine();
 
+            /*
             if (gamepad1.y) {
                 clubMotor.setPower(0.1);
                 clubMotor.setTargetPosition(RobotConstants.clubForward);
@@ -281,6 +285,7 @@ public class OpenCVTesting extends LinearOpMode {
                 clubMotor.setPower(0.5);
                 clubMotor.setTargetPosition(RobotConstants.clubBack);
             }
+             */
         }
     }
 
