@@ -48,6 +48,22 @@ public class OpenCVTesting extends LinearOpMode {
     private DcMotorEx frontRigtDrive = null;
     private DcMotorEx backLeftDrive = null;
     private DcMotorEx backRightDrive = null;
+    private DcMotorEx clubMotor = null;
+    private double Lj_init_x = 0.0;
+    private double Lj_init_y = 0.0;
+    private double Rj_init_x = 0.0;
+    private double Rj_init_y = 0.0;
+
+    enum State {
+        OFF,
+        FIND_BALL,
+        DRIVE_TO_BALL,
+        CAPTURE_BALL,
+        SWING_CLUB_BACK,
+        SWING_CLUB_FORWARD,
+    }
+
+    private State currentState = State.OFF;
 
     private void initializeMotors()
     {
@@ -55,6 +71,7 @@ public class OpenCVTesting extends LinearOpMode {
         frontRigtDrive = hardwareMap.get(DcMotorEx.class, "frontRightDrive");
         backLeftDrive = hardwareMap.get(DcMotorEx.class, "backLeftDrive");
         backRightDrive = hardwareMap.get(DcMotorEx.class, "backRightDrive");
+        clubMotor = hardwareMap.get(DcMotorEx.class, "clubMotor");
 
         frontRigtDrive.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -63,11 +80,17 @@ public class OpenCVTesting extends LinearOpMode {
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRigtDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        clubMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         frontRigtDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        clubMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        clubMotor.setTargetPosition(0);
+        clubMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        clubMotor.setPower(0.5);
     }
 
     private void initializeDashboard()
@@ -146,7 +169,7 @@ public class OpenCVTesting extends LinearOpMode {
     }
 
     private void displayTelemetry(){
-        telemetry.addData("Frame Count", webcam.getFrameCount());
+        /*telemetry.addData("Frame Count", webcam.getFrameCount());
         telemetry.addData("FPS", String.format("%.2f", webcam.getFps()));
         telemetry.addData("Total frame time ms", webcam.getTotalFrameTimeMs());
         telemetry.addData("Pipeline time ms", webcam.getPipelineTimeMs());
@@ -156,31 +179,109 @@ public class OpenCVTesting extends LinearOpMode {
         telemetry.addData("Ball X", RobotConstants.ballX);
         telemetry.addData("Ball Y", RobotConstants.ballY);
         telemetry.addData("Ball Found", RobotConstants.ballExists);
-        telemetry.addData("Ball area", RobotConstants.foundBallArea);
+        telemetry.addData("Ball area", RobotConstants.foundBallArea);*/
+
+        telemetry.addData("state", currentState);
+
+        telemetry.addData("Club Enc", clubMotor.getCurrentPosition());
         updateTelemetry(telemetry);
     }
 
-    public void runOpMode()  {
+    private void initializeControllers()
+    {
+        Lj_init_x = gamepad1.left_stick_x;
+        Lj_init_y = gamepad1.left_stick_y;
+
+        Rj_init_x = gamepad1.right_stick_x;
+        Rj_init_y = gamepad1.right_stick_y;
+    }
+
+    public void findBall() {
         double rotatePower;
+        if (RobotConstants.ballExists) {
+            rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR;
+            // rotatePower = 0.0;
+            if (Math.abs(RobotConstants.ballX) < 5) {
+                //rotatePower = 0.0;
+                //currentState = State.DRIVE_TO_BALL;
+            }
+        } else {
+            rotatePower = 0.0;
+        }
+
+        frontLeftDrive.setPower(-rotatePower);
+        frontRigtDrive.setPower(rotatePower);
+        backLeftDrive.setPower(-rotatePower);
+        backRightDrive.setPower(rotatePower);
+    }
+
+    public void driveToBall() {
+        if (RobotConstants.ballY < RobotConstants.readyToGrabY) {
+            motorsStop();
+            currentState = State.CAPTURE_BALL;
+        } else {
+            motorFwd(RobotConstants.captureSpeed);
+        }
+    }
+
+    public void motorFwd(double speed) {
+        frontLeftDrive.setPower(speed);
+        frontRigtDrive.setPower(speed);
+        backLeftDrive.setPower(speed);
+        backRightDrive.setPower(speed);
+    }
+
+    public void motorsStop() {
+        frontLeftDrive.setPower(0);
+        frontRigtDrive.setPower(0);
+        backLeftDrive.setPower(0);
+        backRightDrive.setPower(0);
+    }
+
+    public void offState() {
+        motorsStop();
+    }
+
+    public void processStateMachine() {
+        if (gamepad1.x) {
+            switch (currentState) {
+                case OFF:
+                    offState();
+                case FIND_BALL:
+                    findBall();
+                case DRIVE_TO_BALL:
+                    driveToBall();
+            }
+        } else {
+            offState();
+        }
+    }
+
+    public void runOpMode()  {
         initializeDashboard();
         initializeMotors();
         initializeVision();
+        initializeControllers();
+
         FtcDashboard.getInstance().startCameraStream(webcam, 0);
 
         waitForStart();
+        currentState = State.FIND_BALL;
         while (opModeIsActive()) {
             displayTelemetry();
-            if (RobotConstants.ballExists) {
-                rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR;
+            processStateMachine();
+
+            if (gamepad1.y) {
+                clubMotor.setPower(0.1);
+                clubMotor.setTargetPosition(RobotConstants.clubForward);
+            } else if (gamepad1.b) {
+                clubMotor.setPower(0.5);
+                clubMotor.setTargetPosition(0);
+            } else if (gamepad1.a) {
+                clubMotor.setPower(0.5);
+                clubMotor.setTargetPosition(RobotConstants.clubBack);
             }
-            else {
-                rotatePower = 0.0;
-            }
-            frontLeftDrive.setPower(-rotatePower);
-            frontRigtDrive.setPower(rotatePower);
-            backLeftDrive.setPower(-rotatePower);
-            backRightDrive.setPower(rotatePower);
-      }
+        }
     }
 
 

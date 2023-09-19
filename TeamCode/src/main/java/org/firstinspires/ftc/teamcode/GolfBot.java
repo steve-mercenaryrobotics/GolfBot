@@ -45,6 +45,8 @@ public class GolfBot extends LinearOpMode {
         frontRigtDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+
     }
 
     private static void rotatePoints(double[] xPoints, double[] yPoints, double angle) {

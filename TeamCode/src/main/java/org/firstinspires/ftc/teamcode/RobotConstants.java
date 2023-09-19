@@ -48,4 +48,9 @@ public class RobotConstants {
     public static double ballY = 0.0;
     public static double foundBallArea = 0.0;
     public static boolean ballExists = false;
+    public static double readyToGrabY = 170.0;
+    public static double captureSpeed = 0.2;
+
+    public static int clubForward = -18;
+    public static int clubBack = 120;
 }
