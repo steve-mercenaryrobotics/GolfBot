@@ -6,7 +6,9 @@ import org.opencv.core.Scalar;
 @Config
 public class RobotConstants {
     //Ball seek rotation power factor
-    public static double ROTATE_FACTOR = 1.0 / 400;
+    public static double ROTATE_FACTOR_LARGE = 1.0 / 500;
+    public static double ROTATE_FACTOR_MEDIUM = 1.0 / 700;
+    public static double ROTATE_FACTOR_SMALL = 1.0 / 900;
 
     //HSV calculated from here...
     //https://colorizer.org/
@@ -48,8 +50,10 @@ public class RobotConstants {
     public static double ballY = 0.0;
     public static double foundBallArea = 0.0;
     public static boolean ballExists = false;
-    public static double readyToGrabY = 170.0;
-    public static double captureSpeed = 0.2;
+    public static double readyToGrabY = 180.0;
+    public static double captureSpeed = -0.2;
+    public static double trackFactor = .001;
+    public static int captureDistance = 370;
 
     public static int clubForward = -18;
     public static int clubBack = 120;

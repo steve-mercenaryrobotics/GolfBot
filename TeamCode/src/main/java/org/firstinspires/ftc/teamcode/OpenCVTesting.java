@@ -53,17 +53,20 @@ public class OpenCVTesting extends LinearOpMode {
     private double Lj_init_y = 0.0;
     private double Rj_init_x = 0.0;
     private double Rj_init_y = 0.0;
+    private double captureBallStartEncoderCount = 0;
+    private int delayLoopCount = 0;
 
     enum State {
         OFF,
         FIND_BALL,
         DRIVE_TO_BALL,
         CAPTURE_BALL,
-        SWING_CLUB_BACK,
-        SWING_CLUB_FORWARD,
+        DELAY_LOOP,
+        HIT_BALL
     }
 
     private State currentState = State.OFF;
+    private State returnState = State.OFF;
 
     private void initializeMotors()
     {
@@ -99,7 +102,7 @@ public class OpenCVTesting extends LinearOpMode {
         telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
     }
 
-     private void initializeVision()
+    private void initializeVision()
     {
          /* Instantiate an OpenCvCamera object for the camera we'll be using.
             * In this sample, we're using a webcam. Note that you will need to
@@ -196,15 +199,20 @@ public class OpenCVTesting extends LinearOpMode {
         Rj_init_y = gamepad1.right_stick_y;
     }
 
-    public void findBall() {
+    private void findBall() {
         double rotatePower;
         if (RobotConstants.ballExists) {
-            rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR;
-            // rotatePower = 0.0;
-            if (Math.abs(RobotConstants.ballX) < 5) {
+            if (Math.abs(RobotConstants.ballX) < 10) {
                 rotatePower = 0.0;
                 currentState = State.DRIVE_TO_BALL;
             }
+            else if (Math.abs(RobotConstants.ballX) < 50)
+                rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR_SMALL;
+            else if (Math.abs(RobotConstants.ballX) < 200)
+                rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR_MEDIUM;
+            else
+                rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR_LARGE;
+            // rotatePower = 0.0;
         } else {
             rotatePower = 0.0;
         }
@@ -215,34 +223,66 @@ public class OpenCVTesting extends LinearOpMode {
         backRightDrive.setPower(rotatePower);
     }
 
-    public void driveToBall() {
-        if (RobotConstants.ballY < RobotConstants.readyToGrabY) {
+    private void driveToBall() {
+        if (RobotConstants.ballY > RobotConstants.readyToGrabY) {
             motorsStop();
+            captureBallStartEncoderCount = frontLeftDrive.getCurrentPosition();
+            clubBack();
             currentState = State.CAPTURE_BALL;
         } else {
-            motorFwd(RobotConstants.captureSpeed);
+            motorFwd(RobotConstants.captureSpeed, RobotConstants.ballX * RobotConstants.trackFactor);
         }
     }
 
-    public void motorFwd(double speed) {
-        frontLeftDrive.setPower(speed);
-        frontRigtDrive.setPower(speed);
-        backLeftDrive.setPower(speed);
-        backRightDrive.setPower(speed);
+    private void motorFwd(double speed, double dirError) {
+        frontLeftDrive.setPower(speed - dirError);
+        frontRigtDrive.setPower(speed + dirError);
+        backLeftDrive.setPower(speed - dirError);
+        backRightDrive.setPower(speed + dirError);
     }
 
-    public void motorsStop() {
+    private void motorsStop() {
         frontLeftDrive.setPower(0);
         frontRigtDrive.setPower(0);
         backLeftDrive.setPower(0);
         backRightDrive.setPower(0);
     }
 
-    public void offState() {
+    private void offState() {
         motorsStop();
     }
 
-    public void processStateMachine() {
+    private void captureBall()
+    {
+        if ((captureBallStartEncoderCount - frontLeftDrive.getCurrentPosition()) < RobotConstants.captureDistance)
+        {
+            motorFwd(RobotConstants.captureSpeed, 0);
+        }
+        else
+        {
+            motorsStop();
+            delayLoopCount = 500;
+            returnState = State.HIT_BALL;
+            currentState = State.DELAY_LOOP;
+        }
+    }
+
+    private void hitBall()
+    {
+        clubForward();
+        delayLoopCount = 500;
+        returnState = State.OFF;
+        currentState = State.DELAY_LOOP;
+    }
+
+    private void delayLoop()
+    {
+        if (delayLoopCount > 0)
+            delayLoopCount --;
+        else
+            currentState = returnState;
+    }
+    private void processStateMachine() {
         if (gamepad1.x) {
             switch (currentState) {
                 case OFF:
@@ -254,10 +294,33 @@ public class OpenCVTesting extends LinearOpMode {
                 case DRIVE_TO_BALL:
                     driveToBall();
                     break;
+                case CAPTURE_BALL:
+                    captureBall();
+                    break;
+                case HIT_BALL:
+                    hitBall();
+                    break;
+                case DELAY_LOOP :
+                    delayLoop();
+                    break;
             }
         } else {
             offState();
         }
+    }
+
+    private void clubForward() {
+        clubMotor.setPower(0.2);
+        clubMotor.setTargetPosition(RobotConstants.clubForward);
+    }
+    private void clubHome() {
+        clubMotor.setPower(0.5);
+        clubMotor.setTargetPosition(0);
+    }
+
+    private void clubBack() {
+        clubMotor.setPower(0.3);
+        clubMotor.setTargetPosition(RobotConstants.clubBack);
     }
 
     public void runOpMode()  {
@@ -273,19 +336,6 @@ public class OpenCVTesting extends LinearOpMode {
         while (opModeIsActive()) {
             displayTelemetry();
             processStateMachine();
-
-            /*
-            if (gamepad1.y) {
-                clubMotor.setPower(0.1);
-                clubMotor.setTargetPosition(RobotConstants.clubForward);
-            } else if (gamepad1.b) {
-                clubMotor.setPower(0.5);
-                clubMotor.setTargetPosition(0);
-            } else if (gamepad1.a) {
-                clubMotor.setPower(0.5);
-                clubMotor.setTargetPosition(RobotConstants.clubBack);
-            }
-             */
         }
     }
 
