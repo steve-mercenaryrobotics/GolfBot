@@ -9,7 +9,6 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 
-import org.firstinspires.ftc.robotcontroller.external.samples.SensorREV2mDistance;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -32,10 +31,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-@TeleOp (name = "GolfBot" ,group = "Linear Opmode")
+@TeleOp (name = "GolfBotSimple" ,group = "Linear Opmode")
 
 //@Disabled
-public class GolfBot extends LinearOpMode {
+public class GolfBotSimple extends LinearOpMode {
     //Dashboard variables
     private FtcDashboard dashboard;
 
@@ -301,7 +300,11 @@ public class GolfBot extends LinearOpMode {
         else
             currentState = returnState;
     }
+
     private void processStateMachine() {
+        if (gamepad1.b) {
+            currentState = State.FIND_BALL;
+        }
         if (gamepad1.x) {
             switch (currentState) {
                 case OFF:
