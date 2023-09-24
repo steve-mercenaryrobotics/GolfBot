@@ -51,8 +51,9 @@ public class RobotConstants {
     public static double foundBallArea = 0.0;
     public static boolean ballExists = false;
     public static double readyToGrabY = 180.0;
-    public static double captureSpeed = -0.2;
+    public static double captureSpeed = -0.1;
     public static double trackFactor = .001;
+    public static int delayTimer = 20;
     public static int captureDistance = 370;
 
     public static int clubForward = -18;
