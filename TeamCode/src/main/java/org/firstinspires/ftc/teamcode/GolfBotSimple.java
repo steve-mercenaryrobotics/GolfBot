@@ -264,6 +264,7 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void offState() {
+        ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLACK);
         motorsStop();
     }
 
@@ -320,15 +321,19 @@ public class GolfBotSimple extends LinearOpMode {
                     offState();
                     break;
                 case FIND_BALL://Rotate the bot to point towards the ball
+                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_WITH_GLITTER);
                     findBall();
                     break;
                 case DRIVE_TO_BALL://Drive forward, tracking the ball, until the ball is just in front of the bot, then raise the arm
+                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_FOREST_PALETTE);
                     driveToBall();
                     break;
                 case CAPTURE_BALL://Drive forward until the ball is found by the distance sensor
+                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_LAVA_PALETTE);
                     captureBall();
                     break;
                 case HIT_BALL://Swing the club to hit the ball
+                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_OCEAN_PALETTE);
                     hitBall();
                     break;
                 case DELAY_LOOP :
@@ -341,7 +346,7 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void clubForward() {
-        clubMotor.setPower(0.4);
+        clubMotor.setPower(GolfBotMotionConstants.hitBallPower);
         clubMotor.setTargetPosition(GolfBotMotionConstants.clubForward);
     }
     private void clubHome() {
@@ -372,7 +377,7 @@ public class GolfBotSimple extends LinearOpMode {
         initializeMotors();
         initializeVision();
         initializeSensors();
-        //initializeMisc();
+        initializeMisc();
         initializeControllers();
 
         FtcDashboard.getInstance().startCameraStream(webcam, 0);

@@ -14,5 +14,6 @@ public class GolfBotMotionConstants {
     public static int captureDistance = 370;
     public static int clubForward = -18;
     public static int clubBack = 120;
+    public static double hitBallPower = 0.42;
 
 }

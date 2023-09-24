@@ -34,7 +34,7 @@ public class GolfBotBallConstants {
     public static int color_upper_v = 255;
 
     public static int elementType = 0;
-    public static int kernelSize = 1;
+    public static int kernelSize = 2;
     public static int drawContours = 0;
     public static int drawRectangle = 0;
     public static int drawCircle = 1;
