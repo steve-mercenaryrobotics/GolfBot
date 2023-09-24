@@ -1,0 +1,62 @@
+https://github.com/OpenFTC/EasyOpenCV
+https://github.com/OpenFTC/EasyOpenCV#installation-instructions
+
+https://github.com/OpenFTC/EasyOpenCV/tree/master#documentation
+
+Pretty close to what we might want for GolfBot?
+https://gist.github.com/oakrc/12a7b5223df0cb55d7c1288ce96a6ab7
+
+Tutorials
+=========
+PC simulator
+https://deltacv.gitbook.io/eocv-sim/
+
+https://www.youtube.com/watch?v=JO7dqzJi8lw
+
+OpenCV documentation
+https://docs.opencv.org/3.4/d7/da8/tutorial_table_of_content_imgproc.html
+Examples
+https://docs.opencv.org/3.4/examples.html
+
+https://answers.opencv.org/question/52754/laser-pointer-detect-and-track/
+
+
+Installation
+============
+1) Open the build.gradle file for the TeamCode module.
+2) At the bottom, add
+    dependencies {
+    implementation 'org.openftc:easyopencv:1.7.0'
+    } 
+3) Perform a "Gradle Sync"
+
+Usage
+=====
+1) Add the following imports...
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
+import org.openftc.easyopencv.OpenCvPipeline;
+import org.openftc.easyopencv.OpenCvWebcam;
+
+2) Add the following object variable to your code
+OpenCvWebcam webcam;
+3) Add the initialization function, and call it durint init. See the OpenCVTesting example for an example of the initialization.
+4) Create a "OpenCVPipeline" pipeline class to contain your processing sequences etc...
+5) The example initialization should set everything up so that the processing in OpenCVPileline is executed constantly. You need to export variables and controls from the pipeline for your main loop to utiize as necessary.
+
+
+Misc web pages
+https://stackoverflow.com/questions/51642465/java-opencv-convert-hsv-back-to-bgr-after-inrange
+https://stackoverflow.com/questions/16746473/opencv-find-bounding-box-of-largest-blob-in-binary-image
+https://stackoverflow.com/questions/29770832/open-cv-code-can-someone-help-me-understand-what-the-code-is-doing/40918718#40918718
+https://github.com/ahanin/opencv-demo/blob/master/src/main/java/tk/year/opencv/demo/filters/FindContours.java
+https://stackoverflow.com/questions/18345969/how-to-get-the-mass-center-of-a-contour-android-opencv
+https://www.tutorialspoint.com/how-to-find-the-area-of-an-image-contour-java-opencv-library
+https://docs.opencv.org/4.x/da/d0c/tutorial_bounding_rects_circles.html
+https://stackoverflow.com/questions/10167534/how-to-find-out-what-type-of-a-mat-object-is-with-mattype-in-opencv

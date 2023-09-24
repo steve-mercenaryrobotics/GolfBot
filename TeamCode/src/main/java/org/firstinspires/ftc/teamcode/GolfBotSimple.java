@@ -8,9 +8,11 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint2f;
@@ -49,6 +51,8 @@ public class GolfBotSimple extends LinearOpMode {
     private DcMotorEx backRightDrive = null;
     private DcMotorEx clubMotor = null;
     private DistanceSensor ballDistance = null;
+    private RevBlinkinLedDriver ledLights = null;
+
     private double Lj_init_x = 0.0;
     private double Lj_init_y = 0.0;
     private double Rj_init_x = 0.0;
@@ -94,6 +98,7 @@ public class GolfBotSimple extends LinearOpMode {
         clubMotor.setTargetPosition(0);
         clubMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         clubMotor.setPower(0.5);
+        clubHome();
     }
 
     private void initializeSensors()
@@ -168,9 +173,7 @@ public class GolfBotSimple extends LinearOpMode {
             @Override
             public void onError(int errorCode)
             {
-                /*
-                 * This will be called if the camera could not be opened
-                 */
+                ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
             }
         });
 
@@ -194,6 +197,8 @@ public class GolfBotSimple extends LinearOpMode {
 */
         telemetry.addData("range", String.format("%.01f mm", ballDistance.getDistance(DistanceUnit.MM)));
         telemetry.addData("state", currentState);
+        telemetry.addData("club current alert setting", clubMotor.getCurrentAlert(CurrentUnit.MILLIAMPS));
+        telemetry.addData("club current ", clubMotor.getCurrentAlert(CurrentUnit.MILLIAMPS));
 
         updateTelemetry(telemetry);
     }
@@ -302,6 +307,10 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void processStateMachine() {
+        if (gamepad1.y)
+            clubForward();
+        if (gamepad1.a)
+            clubBack();
         if (gamepad1.b) {
             currentState = State.FIND_BALL;
         }
@@ -345,11 +354,25 @@ public class GolfBotSimple extends LinearOpMode {
         clubMotor.setTargetPosition(GolfBotMotionConstants.clubBack);
     }
 
+    private void initializeMisc()
+    {
+        ledLights = hardwareMap.get(RevBlinkinLedDriver.class, "blinkin");
+        ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
+    }
+
+    private void checkErrors()
+    {
+        //Do some safety checks on the motors etc...
+        //Check the motor currents. If any are high then shut everything down and let the user know
+        //if (frontLeftDrive.getCurrent())
+    }
+
     public void runOpMode()  {
         initializeDashboard();
         initializeMotors();
         initializeVision();
         initializeSensors();
+        //initializeMisc();
         initializeControllers();
 
         FtcDashboard.getInstance().startCameraStream(webcam, 0);
@@ -357,6 +380,7 @@ public class GolfBotSimple extends LinearOpMode {
         waitForStart();
         currentState = State.FIND_BALL;
         while (opModeIsActive()) {
+            checkErrors();
             displayTelemetry();
             processStateMachine();
         }

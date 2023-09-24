@@ -1,0 +1,50 @@
+https://github.com/acmerobotics/ftc-dashboard
+https://acmerobotics.github.io/ftc-dashboard/
+
+Installation
+============
+1) Open build.dependencies.gradle
+2) In the repositories section, add maven { url = 'https://maven.brott.dev/' }
+3) In the dependencies section, add implementation 'com.acmerobotics.dashboard:dashboard:0.4.11'
+4) Perform a "Gradle Sync"
+
+Usage
+=====
+1) Add the following imports to your class...
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+
+2) Add a dashboard object with...
+    public FtcDashboard dashboard;
+
+3) Create a new dashboard instance with...
+    dashboard = FtcDashboard.getInstance();
+    telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
+
+4) Can then send packets or single messages via telemetry, e.g.
+(https://acmerobotics.github.io/ftc-dashboard/features#telemetry)
+        TelemetryPacket packet = new TelemetryPacket();
+        packet.fieldOverlay()
+                .setStrokeWidth(1)
+                .setStroke("goldenrod")
+                .strokeCircle(0, 0, ORBITAL_RADIUS)
+                .setFill("black")
+                .fillPolygon(bxPoints, byPoints);
+        dashboard.sendTelemetryPacket(packet);
+
+5) Variables can be exposed to the dashboard for interactive modifications, e.g. 
+	@Config
+	public class RobotConstants {
+    		public static int MAGIC_NUMBER = 32;
+    		public static PIDCoefficients TURNING_PID = new PIDCoefficients();
+    		// other constants
+	}
+
+6) The camera can be displayed on the Dashboard (See documentation for examples etc...)
+	FtcDashboard.getInstance().startCameraStream(camera, 0); where camera implements CameraStreamSource
+
+7) A rendering of the field can be generated and have information rendered on it, including graphics.
+https://acmerobotics.github.io/ftc-dashboard/fieldview
+
+8) View with 192.168.43.1:8080/dash

@@ -1,0 +1,10 @@
+File->Settings->External Tools
+Add "Connect to ADB over WiFi Direct"
+Program = C:\Users\merce\AppData\Local\Android\Sdk\platform-tools\adb
+Arguments = connect 192.168.43.1:5555
+
+Once set up then simply connect to the Control Hub WiFi then connect adb with...
+Tools->External Tools->Connect to ADB over WiFi Direct
+
+It is possible to add a second WiFi adapter so that you can be connected to both the Robot and the internet.
+Connecting to both MIGHT require opening Network Settings in Windows and forcing the 2 network connections.

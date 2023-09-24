@@ -4,7 +4,7 @@ import com.acmerobotics.dashboard.config.Config;
 @Config
 public class GolfBotMotionConstants {
     //Ball seek rotation power factor
-    public static double ROTATE_FACTOR_LARGE = 1.0 / 500;
+    public static double ROTATE_FACTOR_LARGE = 1.0 / 600;
     public static double ROTATE_FACTOR_MEDIUM = 1.0 / 700;
     public static double ROTATE_FACTOR_SMALL = 1.0 / 900;
     public static double readyToGrabY = 180.0;
