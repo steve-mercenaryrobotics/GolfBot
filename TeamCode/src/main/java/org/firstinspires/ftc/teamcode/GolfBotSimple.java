@@ -209,17 +209,17 @@ public class GolfBotSimple extends LinearOpMode {
 
     private void findBall() {
         double rotatePower;
-        if (RobotConstants.ballExists) {
-            if (Math.abs(RobotConstants.ballX) < 10) {
+        if (GolfBotIPCVariables.ballExists) {
+            if (Math.abs(GolfBotIPCVariables.ballX) < 10) {
                 rotatePower = 0.0;
                 currentState = State.DRIVE_TO_BALL;
             }
-            else if (Math.abs(RobotConstants.ballX) < 50)
-                rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR_SMALL;
-            else if (Math.abs(RobotConstants.ballX) < 200)
-                rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR_MEDIUM;
+            else if (Math.abs(GolfBotIPCVariables.ballX) < 50)
+                rotatePower = GolfBotIPCVariables.ballX * GolfBotMotionConstants.ROTATE_FACTOR_SMALL;
+            else if (Math.abs(GolfBotIPCVariables.ballX) < 200)
+                rotatePower = GolfBotIPCVariables.ballX * GolfBotMotionConstants.ROTATE_FACTOR_MEDIUM;
             else
-                rotatePower = RobotConstants.ballX * RobotConstants.ROTATE_FACTOR_LARGE;
+                rotatePower = GolfBotIPCVariables.ballX * GolfBotMotionConstants.ROTATE_FACTOR_LARGE;
             // rotatePower = 0.0;
         } else {
             rotatePower = 0.0;
@@ -232,15 +232,15 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void driveToBall() {
-        if (RobotConstants.ballY > RobotConstants.readyToGrabY) {
+        if (GolfBotIPCVariables.ballY > GolfBotMotionConstants.readyToGrabY) {
             motorsStop();
             captureBallStartEncoderCount = frontLeftDrive.getCurrentPosition();
             clubBack();
-            delayLoopCount = RobotConstants.delayTimer;
+            delayLoopCount = GolfBotMotionConstants.delayTimer;
             returnState = State.CAPTURE_BALL;
             currentState = State.DELAY_LOOP;
         } else {
-            motorFwd(RobotConstants.captureSpeed, RobotConstants.ballX * RobotConstants.trackFactor);
+            motorFwd(GolfBotMotionConstants.captureSpeed, GolfBotIPCVariables.ballX * GolfBotMotionConstants.trackFactor);
         }
     }
 
@@ -278,12 +278,12 @@ public class GolfBotSimple extends LinearOpMode {
         */
         if (ballDistance.getDistance(DistanceUnit.MM) < 160) {
             motorsStop();
-            delayLoopCount = RobotConstants.delayTimer;
+            delayLoopCount = GolfBotMotionConstants.delayTimer;
             returnState = State.HIT_BALL;
             currentState = State.DELAY_LOOP;
         }
         else {
-            motorFwd(RobotConstants.captureSpeed, 0);
+            motorFwd(GolfBotMotionConstants.captureSpeed, 0);
         }
     }
 
@@ -333,7 +333,7 @@ public class GolfBotSimple extends LinearOpMode {
 
     private void clubForward() {
         clubMotor.setPower(0.4);
-        clubMotor.setTargetPosition(RobotConstants.clubForward);
+        clubMotor.setTargetPosition(GolfBotMotionConstants.clubForward);
     }
     private void clubHome() {
         clubMotor.setPower(0.5);
@@ -342,7 +342,7 @@ public class GolfBotSimple extends LinearOpMode {
 
     private void clubBack() {
         clubMotor.setPower(0.3);
-        clubMotor.setTargetPosition(RobotConstants.clubBack);
+        clubMotor.setTargetPosition(GolfBotMotionConstants.clubBack);
     }
 
     public void runOpMode()  {
@@ -404,15 +404,15 @@ public class GolfBotSimple extends LinearOpMode {
             //Convert to HSV for better color range definition
             Imgproc.cvtColor(input, input, Imgproc.COLOR_RGB2HSV);
             //Filter pixels outside the desired color range
-            Scalar color_lower = new Scalar(RobotConstants.color_lower_h, RobotConstants.color_lower_s, RobotConstants.color_lower_v);
-            Scalar color_upper = new Scalar(RobotConstants.color_upper_h, RobotConstants.color_upper_s, RobotConstants.color_upper_v);
+            Scalar color_lower = new Scalar(GolfBotBallConstants.color_lower_h, GolfBotBallConstants.color_lower_s, GolfBotBallConstants.color_lower_v);
+            Scalar color_upper = new Scalar(GolfBotBallConstants.color_upper_h, GolfBotBallConstants.color_upper_s, GolfBotBallConstants.color_upper_v);
             Core.inRange(input, color_lower, color_upper, input);
             //De-speckle the image
-            Mat element = Imgproc.getStructuringElement(RobotConstants.elementType,
-                                                        new Size(2 * RobotConstants.kernelSize + 1,
-                                                                 2 * RobotConstants.kernelSize + 1),
-                                                        new Point(RobotConstants.kernelSize,
-                                                                  RobotConstants.kernelSize));
+            Mat element = Imgproc.getStructuringElement(GolfBotBallConstants.elementType,
+                                                        new Size(2 * GolfBotBallConstants.kernelSize + 1,
+                                                                 2 * GolfBotBallConstants.kernelSize + 1),
+                                                        new Point(GolfBotBallConstants.kernelSize,
+                                                                GolfBotBallConstants.kernelSize));
             Imgproc.erode(input, input, element);
             //Find blobs in the image. Actually finds a list of contours which will need to be processed later
             List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
@@ -423,14 +423,14 @@ public class GolfBotSimple extends LinearOpMode {
             int largest_contour_index = -1;
             for( int i = 0; i< contours.size(); i++ ) {// iterate through each contour.
                 double a=Imgproc.contourArea( contours.get(i),false);  //  Find the area of contour
-                if((a>largest_area) && (a>RobotConstants.minBallArea)){
+                if((a>largest_area) && (a>GolfBotBallConstants.minBallArea)){
                     foundBall = true;
                     largest_area=a;
                     largest_contour_index=i;                //Store the index of largest contour
                     //bounding_rect=boundingRect(contours[i]); // Find the bounding rectangle for biggest contour
                 }
             }
-            RobotConstants.foundBallArea = largest_area;
+            GolfBotIPCVariables.foundBallArea = largest_area;
             //Find the contours and bounding regions
             MatOfPoint2f[] contoursPoly = new MatOfPoint2f[contours.size()];
             Rect[] boundRect = new Rect[contours.size()];
@@ -464,22 +464,22 @@ public class GolfBotSimple extends LinearOpMode {
                      B = 0;
                  }
                  Scalar color = new Scalar(R, G, B);
-                if (RobotConstants.drawContours == 1) {
+                if (GolfBotBallConstants.drawContours == 1) {
                     Imgproc.drawContours(DisplayImage, contoursPolyList, i, color);
                 }
-                if (RobotConstants.drawRectangle == 1) {
+                if (GolfBotBallConstants.drawRectangle == 1) {
                     Imgproc.rectangle(DisplayImage, boundRect[i].tl(), boundRect[i].br(), color, 2);
                 }
-                if (RobotConstants.drawCircle == 1) {
+                if (GolfBotBallConstants.drawCircle == 1) {
                     Imgproc.circle(DisplayImage, centers[i], (int) radius[i][0], color, 2);
                 }
             }
 
-            RobotConstants.ballExists = foundBall;
+            GolfBotIPCVariables.ballExists = foundBall;
 
              if (foundBall) {
-                 RobotConstants.ballX = centers[largest_contour_index].x - (input.width() / 2.0);
-                 RobotConstants.ballY = centers[largest_contour_index].y - (input.height() / 2.0);
+                 GolfBotIPCVariables.ballX = centers[largest_contour_index].x - (input.width() / 2.0);
+                 GolfBotIPCVariables.ballY = centers[largest_contour_index].y - (input.height() / 2.0);
              }
 
              /*
