@@ -26,9 +26,17 @@ public class GolfBotBallConstants {
     public static int color_upper_v = 255;
     */
     //Yellow values
-    public static int color_lower_h = 20;
+    /*public static int color_lower_h = 20;
     public static int color_upper_h = 35;
     public static int color_lower_s = 60;
+    public static int color_upper_s = 255;
+    public static int color_lower_v = 130;
+    public static int color_upper_v = 255;*/
+
+    // Kevin's values
+    public static int color_lower_h = 20;
+    public static int color_upper_h = 35;
+    public static int color_lower_s = 70;
     public static int color_upper_s = 255;
     public static int color_lower_v = 130;
     public static int color_upper_v = 255;
@@ -38,5 +46,5 @@ public class GolfBotBallConstants {
     public static int drawContours = 0;
     public static int drawRectangle = 0;
     public static int drawCircle = 1;
-    public static int minBallArea = 50;
+    public static int minBallArea = 40;
 }

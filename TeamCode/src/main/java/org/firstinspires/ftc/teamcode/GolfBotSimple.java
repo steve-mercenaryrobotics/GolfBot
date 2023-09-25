@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -12,8 +13,12 @@ import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
@@ -53,6 +58,12 @@ public class GolfBotSimple extends LinearOpMode {
     private DistanceSensor ballDistance = null;
     private RevBlinkinLedDriver ledLights = null;
 
+    private BNO055IMU imu = null;      // Control/Expansion Hub IMU
+
+    private double robotHeading  = 0;
+    private double headingOffset = 0;
+    private double headingError  = 0;
+
     private double Lj_init_x = 0.0;
     private double Lj_init_y = 0.0;
     private double Rj_init_x = 0.0;
@@ -60,10 +71,14 @@ public class GolfBotSimple extends LinearOpMode {
     private double captureBallStartEncoderCount = 0;
     private int delayLoopCount = 0;
 
+    private boolean putting = false;
+
     enum State {
         OFF,
         FIND_BALL,
         DRIVE_TO_BALL,
+        DRIVE_PAST_BALL,
+        ROTATE_AROUND,
         CAPTURE_BALL,
         DELAY_LOOP,
         HIT_BALL
@@ -104,6 +119,11 @@ public class GolfBotSimple extends LinearOpMode {
     private void initializeSensors()
     {
         ballDistance = hardwareMap.get(DistanceSensor.class, "ballDistance");
+
+        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
+        parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
+        imu = hardwareMap.get(BNO055IMU.class, "imu");
+        imu.initialize(parameters);
     }
 
     private void initializeDashboard()
@@ -200,6 +220,11 @@ public class GolfBotSimple extends LinearOpMode {
         telemetry.addData("club current alert setting", clubMotor.getCurrentAlert(CurrentUnit.MILLIAMPS));
         telemetry.addData("club current ", clubMotor.getCurrentAlert(CurrentUnit.MILLIAMPS));
 
+        Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        telemetry.addData("1", angles.firstAngle);
+        telemetry.addData("2", angles.secondAngle);
+        telemetry.addData("3", angles.thirdAngle);
+
         updateTelemetry(telemetry);
     }
 
@@ -212,7 +237,23 @@ public class GolfBotSimple extends LinearOpMode {
         Rj_init_y = gamepad1.right_stick_y;
     }
 
+    /**
+     * read the raw (un-offset Gyro heading) directly from the IMU
+     */
+    public double getRawHeading() {
+        Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        return angles.firstAngle;
+    }
+
+    public void resetHeading() {
+        // Save a new heading offset equal to the current raw heading.
+        headingOffset = getRawHeading();
+        robotHeading = 0;
+    }
+
     private void findBall() {
+        putting = false;
+
         double rotatePower;
         if (GolfBotIPCVariables.ballExists) {
             if (Math.abs(GolfBotIPCVariables.ballX) < 10) {
@@ -249,6 +290,46 @@ public class GolfBotSimple extends LinearOpMode {
         }
     }
 
+    private void drivePastBall() {
+        if ((captureBallStartEncoderCount - frontLeftDrive.getCurrentPosition()) < GolfBotMotionConstants.drivePastDistance)
+        {
+            motorFwd(-GolfBotMotionConstants.drivePastSpeed, 0);
+        }
+        else
+        {
+            motorsStop();
+            resetHeading();
+            currentState = State.ROTATE_AROUND;
+        }
+    }
+
+    private void rotateAroundBall(){
+        double rotatePower = 0.0;
+
+        if (Math.abs(getRawHeading() - headingOffset + 180) > 5) {
+            motorFwd(0, GolfBotMotionConstants.rotatePower);
+        } else if ((GolfBotIPCVariables.ballExists) && (Math.abs(GolfBotIPCVariables.ballX) < 10)) {
+            if (GolfBotIPCVariables.ballExists) {
+                if (Math.abs(GolfBotIPCVariables.ballX) < 50) {
+                    rotatePower = GolfBotIPCVariables.ballX * GolfBotMotionConstants.ROTATE_FACTOR_SMALL;
+                } else if (Math.abs(GolfBotIPCVariables.ballX) < 200) {
+                    rotatePower = GolfBotIPCVariables.ballX * GolfBotMotionConstants.ROTATE_FACTOR_MEDIUM;
+                } else {
+                    rotatePower = GolfBotIPCVariables.ballX * GolfBotMotionConstants.ROTATE_FACTOR_LARGE;
+                }
+
+                frontLeftDrive.setPower(-rotatePower);
+                frontRigtDrive.setPower(rotatePower);
+                backLeftDrive.setPower(-rotatePower);
+                backRightDrive.setPower(rotatePower);
+            }
+        } else {
+            motorsStop();
+            putting = true;
+            currentState = State.DRIVE_TO_BALL;
+        }
+    }
+
     private void motorFwd(double speed, double dirError) {
         frontLeftDrive.setPower(speed - dirError);
         frontRigtDrive.setPower(speed + dirError);
@@ -269,30 +350,23 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void captureBall()
-    {/*
-        if ((captureBallStartEncoderCount - frontLeftDrive.getCurrentPosition()) < RobotConstants.captureDistance)
-        {
-            motorFwd(RobotConstants.captureSpeed, 0);
-        }
-        else
-        {
-            motorsStop();
-            delayLoopCount = 500;
-            returnState = State.HIT_BALL;
-            currentState = State.DELAY_LOOP;
-        }
-        */
+    {
         if (ballDistance.getDistance(DistanceUnit.MM) < 160) {
             motorsStop();
             delayLoopCount = GolfBotMotionConstants.delayTimer;
-            returnState = State.HIT_BALL;
+            if (putting) {
+                returnState = State.HIT_BALL;
+
+            } else {
+                returnState = State.DRIVE_PAST_BALL;
+            }
+
             currentState = State.DELAY_LOOP;
         }
         else {
             motorFwd(GolfBotMotionConstants.captureSpeed, 0);
         }
     }
-
     private void hitBall()
     {
         clubForward();
@@ -327,6 +401,14 @@ public class GolfBotSimple extends LinearOpMode {
                 case DRIVE_TO_BALL://Drive forward, tracking the ball, until the ball is just in front of the bot, then raise the arm
                     ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_FOREST_PALETTE);
                     driveToBall();
+                    break;
+                case DRIVE_PAST_BALL:
+                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
+                    drivePastBall();
+                    break;
+                case ROTATE_AROUND:
+                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
+                    rotateAroundBall();
                     break;
                 case CAPTURE_BALL://Drive forward until the ball is found by the distance sensor
                     ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_LAVA_PALETTE);
