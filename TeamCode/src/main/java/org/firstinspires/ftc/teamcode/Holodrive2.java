@@ -45,7 +45,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 
 @TeleOp(name="Holodrive2", group="Linear Opmode")
 
-@Disabled
 public class Holodrive2 extends LinearOpMode {
 
     // Declare OpMode members.
@@ -54,9 +53,6 @@ public class Holodrive2 extends LinearOpMode {
     private DcMotorEx frontRightDrive = null;
     private DcMotorEx backLeftDrive = null;
     private DcMotorEx backRightDrive = null;
-    private DcMotorEx ArmMotor = null;
-    private Servo Claw_servo = null;
-    private Servo Claw2_servo = null;
     BNO055IMU imu    = null;
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // * CONTROL_HUB_ORIENTATION_FACTOR MUST be set correctly depending on whether control hub is on the top or bottom of the robot!!! * //
@@ -108,20 +104,7 @@ public class Holodrive2 extends LinearOpMode {
     double minimumHeadingCorrectionSpeed = 0.05;//Minimum rotation correction speed. Will need to tune
     double headingCorrectionDeadband = 0.01;//Deadband in radians. Will need to tune
 
-
-
-    final public int BOTTOM_ARM_POS = 400;
-
-    final public int LOW_ARM_POS =  1925; // = 13 inches
-
-
-    final public int MEDIUM_ARM_POS =3147  ; // = 23 inches
-
-    final public int TOP_ARM_POS = 4344; // = 33 inches
-
     public int max_velo= 2000;
-
-    public int ArmMoveSpeed = 200;
 
     final public double TRIGGER_DEADZONE = 0.1;
 
@@ -132,13 +115,10 @@ public class Holodrive2 extends LinearOpMode {
         // Initialize the motor hardware variables. Note that the strings used here as parameters
         // to 'get' must correspond to the names assigned during the robot configuration
         // step (using the FTC Robot Controller app on the phone).
-        frontLeftDrive  = hardwareMap.get(DcMotorEx.class, "frontLeft");
-        frontRightDrive = hardwareMap.get(DcMotorEx.class, "frontRight");
-        backLeftDrive  = hardwareMap.get(DcMotorEx.class, "BackLeft");
-        backRightDrive = hardwareMap.get(DcMotorEx.class, "BackRight");
-        ArmMotor = hardwareMap.get(DcMotorEx.class,"Arm");
-        Claw_servo = hardwareMap.get(Servo.class,"Claw");
-        Claw2_servo = hardwareMap.get(Servo.class,"Claw2");
+        frontLeftDrive  = hardwareMap.get(DcMotorEx.class, "frontLeftDrive");
+        frontRightDrive = hardwareMap.get(DcMotorEx.class, "frontRightDrive");
+        backLeftDrive  = hardwareMap.get(DcMotorEx.class, "backLeftDrive");
+        backRightDrive = hardwareMap.get(DcMotorEx.class, "backRightDrive");
 
 
         // Motors on one side need to effectively run 'backwards' to move 'forward'
@@ -155,19 +135,10 @@ public class Holodrive2 extends LinearOpMode {
         backLeftDrive.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
 
-        ArmMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        ArmMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-
-        ArmMotor.setTargetPosition(BOTTOM_ARM_POS);
-        ArmMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        ArmMotor.setVelocity(max_velo);
-
-
 
         resetEncoders();
     }
@@ -475,84 +446,22 @@ public class Holodrive2 extends LinearOpMode {
         //    normalizationFactor = 1.0;
     }
 
-    void updateMotorSpeeds()
-    {
+    void updateMotorSpeeds() {
         //Note, the diagonally opposite speeds are the same, so only need to calculate 2 values
-        frontLeftSpeed = finalSpeed*Math.sin(botCentricDirection+(Math.PI/4));
+        frontLeftSpeed = finalSpeed * Math.sin(botCentricDirection + (Math.PI / 4));
         //Now scale to utilize full power
-        frontLeftSpeed = (frontLeftSpeed/normalizationFactor);
+        frontLeftSpeed = (frontLeftSpeed / normalizationFactor);
 
-        frontRightSpeed = finalSpeed*Math.cos(botCentricDirection+(Math.PI/4));
+        frontRightSpeed = finalSpeed * Math.cos(botCentricDirection + (Math.PI / 4));
         //Now scale to utilize full power
-        frontRightSpeed = (frontRightSpeed/normalizationFactor);
+        frontRightSpeed = (frontRightSpeed / normalizationFactor);
 
         //Duplicate diagonal speeds for translation and add in rotation
-        backLeftSpeed   = frontRightSpeed + headingCorrectionSpeed;
-        backRightSpeed  = frontLeftSpeed - headingCorrectionSpeed;
+        backLeftSpeed = frontRightSpeed + headingCorrectionSpeed;
+        backRightSpeed = frontLeftSpeed - headingCorrectionSpeed;
         frontRightSpeed = frontRightSpeed - headingCorrectionSpeed;
-        frontLeftSpeed  = frontLeftSpeed + headingCorrectionSpeed;
+        frontLeftSpeed = frontLeftSpeed + headingCorrectionSpeed;
     }
-    public void process_lifter()
-    {
-
-        int current_pos = ArmMotor.getCurrentPosition();
-        if (( ArmMotor.getCurrentPosition() < TOP_ARM_POS-ArmMoveSpeed) && (gamepad2.right_trigger > TRIGGER_DEADZONE) )
-        {
-            ArmMotor.setTargetPosition(current_pos+ArmMoveSpeed);
-            ArmMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            ArmMotor.setVelocity(max_velo);
-        }
-        else if((ArmMotor.getCurrentPosition() > 0+ArmMoveSpeed) &&  (gamepad2.left_trigger > TRIGGER_DEADZONE))
-        {
-            ArmMotor.setTargetPosition(current_pos-ArmMoveSpeed);
-            ArmMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            ArmMotor.setVelocity(max_velo);
-        }
-
-        else if (gamepad2.dpad_down)
-        {
-            ArmMotor.setTargetPosition(BOTTOM_ARM_POS);
-            ArmMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            ArmMotor.setVelocity(max_velo);
-        }
-        else if (gamepad2.dpad_right)
-        {
-            ArmMotor.setTargetPosition(LOW_ARM_POS);
-            ArmMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            ArmMotor.setVelocity(max_velo);
-
-        }
-        else if (gamepad2.dpad_left)
-        {
-            ArmMotor.setTargetPosition(MEDIUM_ARM_POS);
-            ArmMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            ArmMotor.setVelocity(max_velo);
-
-        }
-        else if (gamepad2.dpad_up) {
-            ArmMotor.setTargetPosition(TOP_ARM_POS);
-            ArmMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            ArmMotor.setVelocity(max_velo);
-        }
-    }
-
-    public void process_claw()
-    {
-        if (gamepad2.x){
-            Claw_servo.setPosition(.5);
-            Claw2_servo.setPosition(.5);
-        }
-        else if (gamepad2.b){
-            Claw_servo.setPosition(0);
-            Claw2_servo.setPosition(0);
-
-        }
-
-
-    }
-
-
-
 
     /**
      * Tele-op example
@@ -582,17 +491,10 @@ public class Holodrive2 extends LinearOpMode {
             //Note, this function will also clamp and scale the power to 1.0
             setMotors(frontLeftSpeed, frontRightSpeed, backLeftSpeed, backRightSpeed);
 
-
-            process_lifter();
-
-            process_claw();
-
-
             telemetry.addData("FL: ", frontLeftSpeed);
             telemetry.addData("FR: ", frontRightSpeed);
             telemetry.addData("BL: ", backLeftSpeed);
             telemetry.addData("BR: ", backRightSpeed);
-            telemetry.addData("ArmMotor",ArmMotor.getCurrentPosition());
             telemetry.addData("heading",currentHeading);
             telemetry.addData("targetHeading",targetHeading);
             telemetry.addData("headingCorrectionSpeed",headingCorrectionSpeed);

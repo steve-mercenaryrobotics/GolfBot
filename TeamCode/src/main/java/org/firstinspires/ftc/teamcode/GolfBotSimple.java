@@ -44,10 +44,10 @@ public class GolfBotSimple extends LinearOpMode {
     //Dashboard variables
     private FtcDashboard dashboard;
 
-    //Vision variables
+    // Vision variables
     OpenCvWebcam webcam;
 
-    //Motor demo variables
+    // Motor variables
     private DcMotorEx frontLeftDrive = null;
     private DcMotorEx frontRightDrive = null;
     private DcMotorEx backLeftDrive = null;
@@ -56,7 +56,8 @@ public class GolfBotSimple extends LinearOpMode {
     private DistanceSensor ballDistance = null;
     private RevBlinkinLedDriver ledLights = null;
 
-    private BNO055IMU imu = null;      // Control/Expansion Hub IMU
+    // Control/Expansion Hub IMU
+    private BNO055IMU imu = null;
     private double robotHeading  = 0;
     private double headingOffset = 0;
 
@@ -66,6 +67,7 @@ public class GolfBotSimple extends LinearOpMode {
     private int delayLoopCount = 0;
 
     private boolean putting = false;
+    private boolean isRunning = false;
 
     enum State {
         OFF,
@@ -184,28 +186,26 @@ public class GolfBotSimple extends LinearOpMode {
                  * away from the user.
                  */
                 webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
-//                webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);
+                // webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);
             }
 
             @Override
             public void onError(int errorCode)
             {
-                setLightPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
+                currentState = State.ERROR;
             }
         });
 
     }
 
     private void displayTelemetry(){
+        telemetry.addData("State", currentState);
+
         telemetry.addData("FPS", String.format(Locale.ENGLISH, "%.2f", webcam.getFps()));
 
-
         telemetry.addData("Club Enc", clubMotor.getCurrentPosition());
-
-        telemetry.addData("range", String.format(Locale.ENGLISH, "%.01f mm", ballDistance.getDistance(DistanceUnit.MM)));
-        telemetry.addData("state", currentState);
-        telemetry.addData("club pos", clubMotor.getCurrentPosition());
-        telemetry.addData("club current ", clubMotor.getCurrent(CurrentUnit.MILLIAMPS));
+        telemetry.addData("Club Current ", clubMotor.getCurrent(CurrentUnit.MILLIAMPS));
+        telemetry.addData("Distance Range", String.format(Locale.ENGLISH, "%.01f mm", ballDistance.getDistance(DistanceUnit.MM)));
 
         Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
         telemetry.addData("First Angle", angles.firstAngle);
@@ -235,6 +235,7 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void motorsStop() {
+        // Stop all drive motors
         frontLeftDrive.setPower(0);
         frontRightDrive.setPower(0);
         backLeftDrive.setPower(0);
@@ -242,6 +243,10 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void setLightPattern(RevBlinkinLedDriver.BlinkinPattern pattern) {
+        /*
+        Sets Blinkin Pattern
+        Don't re-set the pattern if already set to minimize logcat output
+         */
         if (pattern != ledPattern) {
             ledLights.setPattern(pattern);
             ledPattern = pattern;
@@ -255,9 +260,15 @@ public class GolfBotSimple extends LinearOpMode {
             setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BREATH_GRAY);
         }
         motorsStop();
+        if (isRunning) {
+            clubHome();
+        }
     }
 
     public void errorState() {
+        /*
+        Error State caused by club over-current
+         */
         frontLeftDrive.setMotorDisable();
         frontRightDrive.setMotorDisable();
         backLeftDrive.setMotorDisable();
@@ -399,14 +410,17 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void processStateMachine() {
+        isRunning = gamepad1.x || gamepad1.right_bumper;
+
         if (gamepad1.y)
             clubForward();
         if (gamepad1.a)
             clubBack();
         if (gamepad1.b || gamepad1.left_bumper) {
             currentState = State.FIND_BALL;
+            clubHome();
         }
-        if (gamepad1.x || gamepad1.right_bumper) {
+        if (isRunning) {
             switch (currentState) {
                 case OFF:
                     offState();
@@ -476,8 +490,8 @@ public class GolfBotSimple extends LinearOpMode {
 
     private void checkErrors()
     {
-        //Do some safety checks on the motors etc...
-        //Check the motor currents. If any are high then shut everything down and let the user know
+        // Do some safety checks on the motors etc...
+        // Check the motor currents. If any are high then shut everything down and let the user know
         if (clubMotor.getCurrent(CurrentUnit.MILLIAMPS) > GolfBotMotionConstants.maxClubCurrent) {
             currentState = State.ERROR;
         }

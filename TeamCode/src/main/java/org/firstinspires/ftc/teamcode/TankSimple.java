@@ -12,7 +12,6 @@ import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 @TeleOp (name = "TankSimple" ,group = "Linear Opmode")
 
-@Disabled
 public class TankSimple extends LinearOpMode {
     //Dashboard demo variables
     public static double ORBITAL_FREQUENCY = 0.05;
