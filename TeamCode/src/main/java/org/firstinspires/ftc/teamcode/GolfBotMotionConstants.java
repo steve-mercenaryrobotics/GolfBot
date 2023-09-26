@@ -14,7 +14,8 @@ public class GolfBotMotionConstants {
 
     // Club Motion
     public static int maxClubCurrent = 2800;
-    public static int clubForward = -16;
+    public static int clubMotorTolerance = 2;
+    public static int clubForward = -12;
     public static int clubBack = 120;
     public static double hitBallPower = 0.3;
 
@@ -22,9 +23,10 @@ public class GolfBotMotionConstants {
     public static int drivePastDistance = 1000;
     public static double drivePastSpeed = 0.3;
     public static double rotatePower = 0.2;
+    public static double rotatePrecision = 5.0;
 
     // TODO: Implement Ball Alignment
-    public static int captureLowerDist = 70;
-    public static int captureHigherDist = 90;
+    // public static int captureLowerDist = 70;
+    // public static int captureHigherDist = 90;
 
 }

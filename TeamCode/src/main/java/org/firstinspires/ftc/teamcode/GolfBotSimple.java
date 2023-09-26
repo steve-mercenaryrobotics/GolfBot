@@ -27,7 +27,6 @@ import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.core.Core;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.Rect;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
@@ -36,7 +35,7 @@ import org.openftc.easyopencv.OpenCvWebcam;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.Locale;
 
 @TeleOp (name = "GolfBotSimple" ,group = "Linear Opmode")
 
@@ -47,11 +46,10 @@ public class GolfBotSimple extends LinearOpMode {
 
     //Vision variables
     OpenCvWebcam webcam;
-    private Random rng = new Random(12345);
 
     //Motor demo variables
     private DcMotorEx frontLeftDrive = null;
-    private DcMotorEx frontRigtDrive = null;
+    private DcMotorEx frontRightDrive = null;
     private DcMotorEx backLeftDrive = null;
     private DcMotorEx backRightDrive = null;
     private DcMotorEx clubMotor = null;
@@ -59,15 +57,11 @@ public class GolfBotSimple extends LinearOpMode {
     private RevBlinkinLedDriver ledLights = null;
 
     private BNO055IMU imu = null;      // Control/Expansion Hub IMU
-
     private double robotHeading  = 0;
     private double headingOffset = 0;
-    private double headingError  = 0;
 
-    private double Lj_init_x = 0.0;
-    private double Lj_init_y = 0.0;
-    private double Rj_init_x = 0.0;
-    private double Rj_init_y = 0.0;
+    private RevBlinkinLedDriver.BlinkinPattern ledPattern = null;
+
     private double captureBallStartEncoderCount = 0;
     private int delayLoopCount = 0;
 
@@ -92,22 +86,22 @@ public class GolfBotSimple extends LinearOpMode {
     private void initializeMotors()
     {
         frontLeftDrive = hardwareMap.get(DcMotorEx.class, "frontLeftDrive");
-        frontRigtDrive = hardwareMap.get(DcMotorEx.class, "frontRightDrive");
+        frontRightDrive = hardwareMap.get(DcMotorEx.class, "frontRightDrive");
         backLeftDrive = hardwareMap.get(DcMotorEx.class, "backLeftDrive");
         backRightDrive = hardwareMap.get(DcMotorEx.class, "backRightDrive");
         clubMotor = hardwareMap.get(DcMotorEx.class, "clubMotor");
 
-        frontRigtDrive.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
 
         backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRigtDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         clubMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        frontRigtDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
@@ -115,6 +109,7 @@ public class GolfBotSimple extends LinearOpMode {
         clubMotor.setTargetPosition(0);
         clubMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         clubMotor.setPower(0.5);
+        clubMotor.setTargetPositionTolerance(GolfBotMotionConstants.clubMotorTolerance);
         clubHome();
     }
 
@@ -195,48 +190,27 @@ public class GolfBotSimple extends LinearOpMode {
             @Override
             public void onError(int errorCode)
             {
-                ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
+                setLightPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
             }
         });
 
     }
 
     private void displayTelemetry(){
-        /*telemetry.addData("Frame Count", webcam.getFrameCount());
-        telemetry.addData("FPS", String.format("%.2f", webcam.getFps()));
-        telemetry.addData("Total frame time ms", webcam.getTotalFrameTimeMs());
-        telemetry.addData("Pipeline time ms", webcam.getPipelineTimeMs());
-        telemetry.addData("Overhead time ms", webcam.getOverheadTimeMs());
-        telemetry.addData("Theoretical max FPS", webcam.getCurrentPipelineMaxFps());
-
-        telemetry.addData("Ball X", RobotConstants.ballX);
-        telemetry.addData("Ball Y", RobotConstants.ballY);
-        telemetry.addData("Ball Found", RobotConstants.ballExists);
-        telemetry.addData("Ball area", RobotConstants.foundBallArea);
+        telemetry.addData("FPS", String.format(Locale.ENGLISH, "%.2f", webcam.getFps()));
 
 
         telemetry.addData("Club Enc", clubMotor.getCurrentPosition());
-*/
-        telemetry.addData("range", String.format("%.01f mm", ballDistance.getDistance(DistanceUnit.MM)));
+
+        telemetry.addData("range", String.format(Locale.ENGLISH, "%.01f mm", ballDistance.getDistance(DistanceUnit.MM)));
         telemetry.addData("state", currentState);
         telemetry.addData("club pos", clubMotor.getCurrentPosition());
         telemetry.addData("club current ", clubMotor.getCurrent(CurrentUnit.MILLIAMPS));
 
         Orientation angles = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        telemetry.addData("1", angles.firstAngle);
-        telemetry.addData("2", angles.secondAngle);
-        telemetry.addData("3", angles.thirdAngle);
+        telemetry.addData("First Angle", angles.firstAngle);
 
         updateTelemetry(telemetry);
-    }
-
-    private void initializeControllers()
-    {
-        Lj_init_x = gamepad1.left_stick_x;
-        Lj_init_y = gamepad1.left_stick_y;
-
-        Rj_init_x = gamepad1.right_stick_x;
-        Rj_init_y = gamepad1.right_stick_y;
     }
 
     /**
@@ -251,6 +225,45 @@ public class GolfBotSimple extends LinearOpMode {
         // Save a new heading offset equal to the current raw heading.
         headingOffset = getRawHeading();
         robotHeading = 0;
+    }
+
+    private void motorFwd(double speed, double dirError) {
+        frontLeftDrive.setPower(speed - dirError);
+        frontRightDrive.setPower(speed + dirError);
+        backLeftDrive.setPower(speed - dirError);
+        backRightDrive.setPower(speed + dirError);
+    }
+
+    private void motorsStop() {
+        frontLeftDrive.setPower(0);
+        frontRightDrive.setPower(0);
+        backLeftDrive.setPower(0);
+        backRightDrive.setPower(0);
+    }
+
+    private void setLightPattern(RevBlinkinLedDriver.BlinkinPattern pattern) {
+        if (pattern != ledPattern) {
+            ledLights.setPattern(pattern);
+            ledPattern = pattern;
+        }
+    }
+
+    private void offState() {
+        if (GolfBotIPCVariables.ballExists) {
+            setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BREATH_RED);
+        } else {
+            setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BREATH_GRAY);
+        }
+        motorsStop();
+    }
+
+    public void errorState() {
+        frontLeftDrive.setMotorDisable();
+        frontRightDrive.setMotorDisable();
+        backLeftDrive.setMotorDisable();
+        backRightDrive.setMotorDisable();
+        clubMotor.setMotorDisable();
+        setLightPattern(RevBlinkinLedDriver.BlinkinPattern.RED_ORANGE);
     }
 
     private void findBall() {
@@ -274,7 +287,7 @@ public class GolfBotSimple extends LinearOpMode {
         }
 
         frontLeftDrive.setPower(-rotatePower);
-        frontRigtDrive.setPower(rotatePower);
+        frontRightDrive.setPower(rotatePower);
         backLeftDrive.setPower(-rotatePower);
         backRightDrive.setPower(rotatePower);
     }
@@ -306,19 +319,17 @@ public class GolfBotSimple extends LinearOpMode {
     }
 
     private void rotateAroundBall(){
-        double rotatePower = 0.0;
-
         // Get the robot heading by applying an offset to the IMU heading
         robotHeading = getRawHeading() - headingOffset;
 
         // Determine the heading current error
-        headingError = 180 - robotHeading;
+        double headingError = 180 - robotHeading;
 
         // Normalize the error to be within +/- 180 degrees
         while (headingError > 180)  headingError -= 360;
         while (headingError <= -180) headingError += 360;
 
-        if (Math.abs(headingError) > 10) {
+        if (Math.abs(headingError) > GolfBotMotionConstants.rotatePrecision) {
             motorFwd(0, GolfBotMotionConstants.rotatePower);
         } else {
             motorsStop();
@@ -327,37 +338,7 @@ public class GolfBotSimple extends LinearOpMode {
         }
     }
 
-    private void motorFwd(double speed, double dirError) {
-        frontLeftDrive.setPower(speed - dirError);
-        frontRigtDrive.setPower(speed + dirError);
-        backLeftDrive.setPower(speed - dirError);
-        backRightDrive.setPower(speed + dirError);
-    }
-
-    private void motorsStop() {
-        frontLeftDrive.setPower(0);
-        frontRigtDrive.setPower(0);
-        backLeftDrive.setPower(0);
-        backRightDrive.setPower(0);
-    }
-
-    private void offState() {
-        ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLACK);
-        motorsStop();
-    }
-
-    public void errorState() {
-        telemetry.addLine("in er");
-        frontLeftDrive.setMotorDisable();
-        frontRigtDrive.setMotorDisable();
-        backLeftDrive.setMotorDisable();
-        backRightDrive.setMotorDisable();
-        clubMotor.setMotorDisable();
-        ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED_ORANGE);
-    }
-
-    private void captureBall()
-    {
+    private void captureBall() {
         double dist = ballDistance.getDistance(DistanceUnit.MM);
         if (dist < 160) {
             // Ball is captured
@@ -385,12 +366,12 @@ public class GolfBotSimple extends LinearOpMode {
         } else if (dist > GolfBotMotionConstants.captureHigherDist) {
             frontLeftDrive.setPower(-0.1);
             backRightDrive.setPower(-0.1);
-            frontRigtDrive.setPower(0.1);
+            frontRightDrive.setPower(0.1);
             backLeftDrive.setPower(0.1);
         } else if (dist < GolfBotMotionConstants.captureLowerDist) {
             frontLeftDrive.setPower(0.1);
             backRightDrive.setPower(0.1);
-            frontRigtDrive.setPower(-0.1);
+            frontRightDrive.setPower(-0.1);
             backLeftDrive.setPower(-0.1);
         }
         */
@@ -405,14 +386,12 @@ public class GolfBotSimple extends LinearOpMode {
         currentState = State.DELAY_LOOP;
     }
 
-    private void hitBall()
-    {
+    private void hitBall() {
         clubForward();
         currentState = State.OFF;
     }
 
-    private void delayLoop()
-    {
+    private void delayLoop() {
         if (delayLoopCount > 0)
             delayLoopCount --;
         else
@@ -424,10 +403,10 @@ public class GolfBotSimple extends LinearOpMode {
             clubForward();
         if (gamepad1.a)
             clubBack();
-        if (gamepad1.b) {
+        if (gamepad1.b || gamepad1.left_bumper) {
             currentState = State.FIND_BALL;
         }
-        if (gamepad1.x) {
+        if (gamepad1.x || gamepad1.right_bumper) {
             switch (currentState) {
                 case OFF:
                     offState();
@@ -436,30 +415,30 @@ public class GolfBotSimple extends LinearOpMode {
                     errorState();
                     break;
                 case FIND_BALL://Rotate the bot to point towards the ball
-                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_WITH_GLITTER);
+                    setLightPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_WITH_GLITTER);
                     findBall();
                     break;
                 case DRIVE_TO_BALL://Drive forward, tracking the ball, until the ball is just in front of the bot, then raise the arm
-                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_FOREST_PALETTE);
+                    setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BEATS_PER_MINUTE_FOREST_PALETTE);
                     driveToBall();
                     break;
                 case DRIVE_PAST_BALL:
-                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
+                    setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BEATS_PER_MINUTE_PARTY_PALETTE);
                     drivePastBall();
                     break;
                 case ROTATE_AROUND:
-                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
+                    setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BEATS_PER_MINUTE_PARTY_PALETTE);
                     rotateAroundBall();
                     break;
                 case CAPTURE_BALL://Drive forward until the ball is found by the distance sensor
-                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_LAVA_PALETTE);
+                    setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BEATS_PER_MINUTE_LAVA_PALETTE);
                     captureBall();
                     break;
                 case ALIGN_BALL:
                     align_ball();
                     break;
                 case HIT_BALL://Swing the club to hit the ball
-                    ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_OCEAN_PALETTE);
+                    setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BEATS_PER_MINUTE_OCEAN_PALETTE);
                     hitBall();
                     break;
                 case DELAY_LOOP :
@@ -492,7 +471,7 @@ public class GolfBotSimple extends LinearOpMode {
     private void initializeMisc()
     {
         ledLights = hardwareMap.get(RevBlinkinLedDriver.class, "blinkin");
-        ledLights.setPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
+        setLightPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
     }
 
     private void checkErrors()
@@ -510,7 +489,6 @@ public class GolfBotSimple extends LinearOpMode {
         initializeVision();
         initializeSensors();
         initializeMisc();
-        initializeControllers();
 
         FtcDashboard.getInstance().startCameraStream(webcam, 0);
 
@@ -539,7 +517,7 @@ public class GolfBotSimple extends LinearOpMode {
      * if you're doing something weird where you do need it synchronized with your OpMode thread,
      * then you will need to account for that accordingly.
      */
-    class OurOpenCVPipeline extends OpenCvPipeline {
+    static class OurOpenCVPipeline extends OpenCvPipeline {
 
         /*
          * NOTE: if you wish to use additional Mat objects in your processing pipeline, it is
@@ -562,12 +540,15 @@ public class GolfBotSimple extends LinearOpMode {
 
             boolean foundBall = false;
             Mat DisplayImage = input.clone();
+
             //Convert to HSV for better color range definition
             Imgproc.cvtColor(input, input, Imgproc.COLOR_RGB2HSV);
+
             //Filter pixels outside the desired color range
             Scalar color_lower = new Scalar(GolfBotBallConstants.color_lower_h, GolfBotBallConstants.color_lower_s, GolfBotBallConstants.color_lower_v);
             Scalar color_upper = new Scalar(GolfBotBallConstants.color_upper_h, GolfBotBallConstants.color_upper_s, GolfBotBallConstants.color_upper_v);
             Core.inRange(input, color_lower, color_upper, input);
+
             //De-speckle the image
             Mat element = Imgproc.getStructuringElement(GolfBotBallConstants.elementType,
                                                         new Size(2 * GolfBotBallConstants.kernelSize + 1,
@@ -575,32 +556,33 @@ public class GolfBotSimple extends LinearOpMode {
                                                         new Point(GolfBotBallConstants.kernelSize,
                                                                 GolfBotBallConstants.kernelSize));
             Imgproc.erode(input, input, element);
+
             //Find blobs in the image. Actually finds a list of contours which will need to be processed later
-            List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+            List<MatOfPoint> contours = new ArrayList<>();
             final Mat hierarchy = new Mat();
             Imgproc.findContours(input, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+
             //Now search the list for the largest "blob"
             double largest_area = 0.0;
             int largest_contour_index = -1;
-            for( int i = 0; i< contours.size(); i++ ) {// iterate through each contour.
+            for (int i = 0; i< contours.size(); i++) {// iterate through each contour.
                 double a=Imgproc.contourArea( contours.get(i),false);  //  Find the area of contour
                 if((a>largest_area) && (a>GolfBotBallConstants.minBallArea)){
                     foundBall = true;
                     largest_area=a;
                     largest_contour_index=i;                //Store the index of largest contour
-                    //bounding_rect=boundingRect(contours[i]); // Find the bounding rectangle for biggest contour
                 }
             }
             GolfBotIPCVariables.foundBallArea = largest_area;
-            //Find the contours and bounding regions
+
+            // Find the contours and bounding regions
             MatOfPoint2f[] contoursPoly = new MatOfPoint2f[contours.size()];
-            Rect[] boundRect = new Rect[contours.size()];
             Point[] centers = new Point[contours.size()];
             float[][] radius = new float[contours.size()][1];
+
             for (int i = 0; i < contours.size(); i++) {
                 contoursPoly[i] = new MatOfPoint2f();
                 Imgproc.approxPolyDP(new MatOfPoint2f(contours.get(i).toArray()), contoursPoly[i], 3, true);
-                boundRect[i] = Imgproc.boundingRect(new MatOfPoint(contoursPoly[i].toArray()));
                 centers[i] = new Point();
                 Imgproc.minEnclosingCircle(contoursPoly[i], centers[i], radius[i]);
             }
@@ -608,18 +590,17 @@ public class GolfBotSimple extends LinearOpMode {
             for (MatOfPoint2f poly : contoursPoly) {
                 contoursPolyList.add(new MatOfPoint(poly.toArray()));
             }
-            //Convert the image back to RGB for color drawing
-            //Not needed now since drawing on the original image Imgproc.cvtColor(input, input, Imgproc.COLOR_GRAY2RGB);
+
+            // Draw shape and/or contour on original image
             int R;
             int G;
             int B;
-             for (int i = 0; i < contours.size(); i++) {
-                 if (i == largest_contour_index) {
-                     R = rng.nextInt(256);
-                     G = rng.nextInt(256);
-                     B = rng.nextInt(256);
-                 }
-                 else {
+            for (int i = 0; i < contours.size(); i++) {
+                if (i == largest_contour_index) {
+                     R = 0;
+                     G = 255;
+                     B = 0;
+                 } else {
                      R = 255;
                      G = 0;
                      B = 0;
@@ -628,9 +609,6 @@ public class GolfBotSimple extends LinearOpMode {
                 if (GolfBotBallConstants.drawContours == 1) {
                     Imgproc.drawContours(DisplayImage, contoursPolyList, i, color);
                 }
-                if (GolfBotBallConstants.drawRectangle == 1) {
-                    Imgproc.rectangle(DisplayImage, boundRect[i].tl(), boundRect[i].br(), color, 2);
-                }
                 if (GolfBotBallConstants.drawCircle == 1) {
                     Imgproc.circle(DisplayImage, centers[i], (int) radius[i][0], color, 2);
                 }
@@ -638,18 +616,18 @@ public class GolfBotSimple extends LinearOpMode {
 
             GolfBotIPCVariables.ballExists = foundBall;
 
-             if (foundBall) {
-                 GolfBotIPCVariables.ballX = centers[largest_contour_index].x - (input.width() / 2.0);
-                 GolfBotIPCVariables.ballY = centers[largest_contour_index].y - (input.height() / 2.0);
-             }
+            if (foundBall) {
+                GolfBotIPCVariables.ballX = centers[largest_contour_index].x - (input.width() / 2.0);
+                GolfBotIPCVariables.ballY = centers[largest_contour_index].y - (input.height() / 2.0);
+            }
 
-             /*
-             * NOTE: to see how to get data from your pipeline to your OpMode as well as how
-             * to change which stage of the pipeline is rendered to the viewport when it is
-             * tapped, please see {@link PipelineStageSwitchingExample}
-             */
+            /*
+            * NOTE: to see how to get data from your pipeline to your OpMode as well as how
+            * to change which stage of the pipeline is rendered to the viewport when it is
+            * tapped, please see {@link PipelineStageSwitchingExample}
+            */
             DisplayImage.copyTo(input);
-             DisplayImage.release();
+            DisplayImage.release();
             return input;
         }
 
