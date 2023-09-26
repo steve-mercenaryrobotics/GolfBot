@@ -38,7 +38,7 @@ public class GolfBotBallConstants {
     public static int color_upper_h = 35;
     public static int color_lower_s = 70;
     public static int color_upper_s = 255;
-    public static int color_lower_v = 130;
+    public static int color_lower_v = 100;
     public static int color_upper_v = 255;
 
     public static int elementType = 0;
