@@ -18,6 +18,7 @@ public class GolfBotMotionConstants {
     public static int clubForward = -12;
     public static int clubBack = 120;
     public static double hitBallPower = 0.3;
+    public static int swingDelayTimer = 10;
 
     // Drive Past Ball and turn settings
     public static int drivePastDistance = 1000;
