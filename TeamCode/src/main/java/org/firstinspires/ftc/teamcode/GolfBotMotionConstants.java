@@ -3,7 +3,7 @@ import com.acmerobotics.dashboard.config.Config;
 
 @Config
 public class GolfBotMotionConstants {
-    //Ball seek rotation power factor
+    // Ball seek rotation power factor
     public static double ROTATE_FACTOR_LARGE = 1.0 / 600;
     public static double ROTATE_FACTOR_MEDIUM = 1.0 / 700;
     public static double ROTATE_FACTOR_SMALL = 1.0 / 900;
@@ -14,11 +14,10 @@ public class GolfBotMotionConstants {
 
     // Club Motion
     public static int maxClubCurrent = 2800;
-    public static int clubMotorTolerance = 2;
+    public static int clubMotorTolerance = 3;
     public static int clubForward = -12;
     public static int clubBack = 120;
     public static double hitBallPower = 0.3;
-    public static int swingDelayTimer = 10;
 
     // Drive Past Ball and turn settings
     public static int drivePastDistance = 1000;

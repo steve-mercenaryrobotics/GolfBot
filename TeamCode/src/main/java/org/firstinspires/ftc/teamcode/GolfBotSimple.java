@@ -65,7 +65,6 @@ public class GolfBotSimple extends LinearOpMode {
 
     private double captureBallStartEncoderCount = 0;
     private int delayLoopCount = 0;
-    private int delayBeforeOffLoopCount = 0;
 
     private boolean putting = false;
     private boolean isRunning = false;
@@ -80,8 +79,7 @@ public class GolfBotSimple extends LinearOpMode {
         CAPTURE_BALL,
         ALIGN_BALL,
         DELAY_LOOP,
-        HIT_BALL,
-        DELAY_BEFORE_OFF
+        HIT_BALL
     }
 
     private State currentState = State.OFF;
@@ -262,9 +260,6 @@ public class GolfBotSimple extends LinearOpMode {
             setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BREATH_GRAY);
         }
         motorsStop();
-        if (isRunning) {
-            clubHome();
-        }
     }
 
     public void errorState() {
@@ -401,9 +396,7 @@ public class GolfBotSimple extends LinearOpMode {
 
     private void hitBall() {
         clubForward();
-        delayBeforeOffLoopCount = GolfBotMotionConstants.swingDelayTimer;
-        returnState = State.OFF;
-        currentState = State.DELAY_BEFORE_OFF;
+        currentState = State.OFF;
     }
 
     private void delayLoop() {
@@ -411,15 +404,6 @@ public class GolfBotSimple extends LinearOpMode {
             delayLoopCount --;
         else
             currentState = returnState;
-    }
-
-    private void delayBeforeOff() {
-        if (delayBeforeOffLoopCount > 0) {
-            sleep(1);
-            delayBeforeOffLoopCount--;
-        } else {
-            currentState = returnState;
-        }
     }
 
     private void processStateMachine() {
@@ -470,9 +454,6 @@ public class GolfBotSimple extends LinearOpMode {
                     break;
                 case DELAY_LOOP :
                     delayLoop();
-                    break;
-                case DELAY_BEFORE_OFF:
-                    delayBeforeOff();
                     break;
             }
         } else {
