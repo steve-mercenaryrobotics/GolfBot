@@ -37,7 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-@TeleOp (name = "GolfBotSimple" ,group = "Linear Opmode")
+@TeleOp (name = "GolfBotSimple", group = "Linear Opmode")
 
 //@Disabled
 public class GolfBotSimple extends LinearOpMode {
@@ -85,8 +85,10 @@ public class GolfBotSimple extends LinearOpMode {
     private State currentState = State.OFF;
     private State returnState = State.OFF;
 
-    private void initializeMotors()
-    {
+    /**
+     * Initialize drive motors, clubMotor; zero club motor encoder
+     */
+    private void initializeMotors() {
         frontLeftDrive = hardwareMap.get(DcMotorEx.class, "frontLeftDrive");
         frontRightDrive = hardwareMap.get(DcMotorEx.class, "frontRightDrive");
         backLeftDrive = hardwareMap.get(DcMotorEx.class, "backLeftDrive");
@@ -115,8 +117,10 @@ public class GolfBotSimple extends LinearOpMode {
         clubHome();
     }
 
-    private void initializeSensors()
-    {
+    /**
+     * Initialize Distance Sensor and BN055IMU
+     */
+    private void initializeSensors() {
         ballDistance = hardwareMap.get(DistanceSensor.class, "ballDistance");
 
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
@@ -125,14 +129,18 @@ public class GolfBotSimple extends LinearOpMode {
         imu.initialize(parameters);
     }
 
-    private void initializeDashboard()
-    {
+    /**
+     * Initialize FTC Dashboard and Telemetry
+     */
+    private void initializeDashboard() {
         dashboard = FtcDashboard.getInstance();
         telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
     }
 
-    private void initializeVision()
-    {
+    /**
+     * Initialize Vision and Pipeline
+     */
+    private void initializeVision() {
          /* Instantiate an OpenCvCamera object for the camera we'll be using.
             * In this sample, we're using a webcam. Note that you will need to
             * make sure you have added the webcam to your configuration file and
@@ -193,13 +201,26 @@ public class GolfBotSimple extends LinearOpMode {
             public void onError(int errorCode)
             {
                 currentState = State.ERROR;
+                telemetry.addLine(String.format(Locale.ENGLISH, "ERROR: Camera Init %d", errorCode));
             }
         });
 
     }
 
-    private void displayTelemetry(){
+    /**
+     * Initialize Led Lights
+     */
+    private void initializeMisc() {
+        ledLights = hardwareMap.get(RevBlinkinLedDriver.class, "blinkin");
+        setLightPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
+    }
+
+    /**
+     * Display Telemetry Data
+     */
+    private void displayTelemetry() {
         telemetry.addData("State", currentState);
+        telemetry.addData("Running", isRunning);
 
         telemetry.addData("FPS", String.format(Locale.ENGLISH, "%.2f", webcam.getFps()));
 
@@ -221,12 +242,20 @@ public class GolfBotSimple extends LinearOpMode {
         return angles.firstAngle;
     }
 
+    /**
+     * reset heading angle to zero
+     */
     public void resetHeading() {
         // Save a new heading offset equal to the current raw heading.
         headingOffset = getRawHeading();
         robotHeading = 0;
     }
 
+    /**
+     * Drive forward at speed and turning speed
+     * @param speed Speed to run motors (can be negative)
+     * @param dirError Speed to turn (can be negative)
+     */
     private void motorFwd(double speed, double dirError) {
         frontLeftDrive.setPower(speed - dirError);
         frontRightDrive.setPower(speed + dirError);
@@ -234,6 +263,9 @@ public class GolfBotSimple extends LinearOpMode {
         backRightDrive.setPower(speed + dirError);
     }
 
+    /**
+     * Stop all drive motors
+     */
     private void motorsStop() {
         // Stop all drive motors
         frontLeftDrive.setPower(0);
@@ -242,6 +274,34 @@ public class GolfBotSimple extends LinearOpMode {
         backRightDrive.setPower(0);
     }
 
+    /**
+     * Move club to forward position
+     */
+    private void clubForward() {
+        clubMotor.setPower(GolfBotMotionConstants.hitBallPower);
+        clubMotor.setTargetPosition(GolfBotMotionConstants.clubForward);
+    }
+
+    /**
+     * Move club to zero position
+     */
+    private void clubHome() {
+        clubMotor.setPower(0.5);
+        clubMotor.setTargetPosition(0);
+    }
+
+    /**
+     * Move club to back position
+     */
+    private void clubBack() {
+        clubMotor.setPower(0.3);
+        clubMotor.setTargetPosition(GolfBotMotionConstants.clubBack);
+    }
+
+    /**
+     * Set pattern of leds
+     * @param pattern Blinkin Pattern to use
+     */
     private void setLightPattern(RevBlinkinLedDriver.BlinkinPattern pattern) {
         /*
         Sets Blinkin Pattern
@@ -253,6 +313,9 @@ public class GolfBotSimple extends LinearOpMode {
         }
     }
 
+    /**
+     * Code that is run when done in state machine loop
+     */
     private void offState() {
         if (GolfBotIPCVariables.ballExists) {
             setLightPattern(RevBlinkinLedDriver.BlinkinPattern.BREATH_RED);
@@ -262,10 +325,10 @@ public class GolfBotSimple extends LinearOpMode {
         motorsStop();
     }
 
+    /**
+     * Error State caused by club over-current
+     */
     public void errorState() {
-        /*
-        Error State caused by club over-current
-         */
         frontLeftDrive.setMotorDisable();
         frontRightDrive.setMotorDisable();
         backLeftDrive.setMotorDisable();
@@ -274,6 +337,9 @@ public class GolfBotSimple extends LinearOpMode {
         setLightPattern(RevBlinkinLedDriver.BlinkinPattern.RED_ORANGE);
     }
 
+    /**
+     * Angle towards ball using vision
+     */
     private void findBall() {
         putting = false;
 
@@ -300,6 +366,9 @@ public class GolfBotSimple extends LinearOpMode {
         backRightDrive.setPower(rotatePower);
     }
 
+    /**
+     * Drive until ball is out of sight
+     */
     private void driveToBall() {
         if (GolfBotIPCVariables.ballY > GolfBotMotionConstants.readyToGrabY) {
             motorsStop();
@@ -313,6 +382,9 @@ public class GolfBotSimple extends LinearOpMode {
         }
     }
 
+    /**
+     * Drive past ball using encoders
+     */
     private void drivePastBall() {
         if ((captureBallStartEncoderCount - frontLeftDrive.getCurrentPosition()) < GolfBotMotionConstants.drivePastDistance)
         {
@@ -326,6 +398,9 @@ public class GolfBotSimple extends LinearOpMode {
         }
     }
 
+    /**
+     * Rotate 180 degrees using imu
+     */
     private void rotateAroundBall(){
         // Get the robot heading by applying an offset to the IMU heading
         robotHeading = getRawHeading() - headingOffset;
@@ -346,6 +421,9 @@ public class GolfBotSimple extends LinearOpMode {
         }
     }
 
+    /**
+     * Go forward until ball in in line of distance sensor
+     */
     private void captureBall() {
         double dist = ballDistance.getDistance(DistanceUnit.MM);
         if (dist < 160) {
@@ -358,6 +436,9 @@ public class GolfBotSimple extends LinearOpMode {
         }
     }
 
+    /**
+     * Align ball with distance sensor (unimplemented)
+     */
     private void align_ball() {
         // TODO: Implement this
         /*double dist = ballDistance.getDistance(DistanceUnit.MM);
@@ -394,11 +475,17 @@ public class GolfBotSimple extends LinearOpMode {
         currentState = State.DELAY_LOOP;
     }
 
+    /**
+     * Hit ball with clubMotor
+     */
     private void hitBall() {
         clubForward();
         currentState = State.OFF;
     }
 
+    /**
+     * Delay loop by loop cycles
+     */
     private void delayLoop() {
         if (delayLoopCount > 0)
             delayLoopCount --;
@@ -406,6 +493,9 @@ public class GolfBotSimple extends LinearOpMode {
             currentState = returnState;
     }
 
+    /**
+     * State Machine
+     */
     private void processStateMachine() {
         isRunning = gamepad1.x || gamepad1.right_bumper;
 
@@ -465,28 +555,7 @@ public class GolfBotSimple extends LinearOpMode {
         }
     }
 
-    private void clubForward() {
-        clubMotor.setPower(GolfBotMotionConstants.hitBallPower);
-        clubMotor.setTargetPosition(GolfBotMotionConstants.clubForward);
-    }
-    private void clubHome() {
-        clubMotor.setPower(0.5);
-        clubMotor.setTargetPosition(0);
-    }
-
-    private void clubBack() {
-        clubMotor.setPower(0.3);
-        clubMotor.setTargetPosition(GolfBotMotionConstants.clubBack);
-    }
-
-    private void initializeMisc()
-    {
-        ledLights = hardwareMap.get(RevBlinkinLedDriver.class, "blinkin");
-        setLightPattern(RevBlinkinLedDriver.BlinkinPattern.CONFETTI);
-    }
-
-    private void checkErrors()
-    {
+    private void checkErrors() {
         // Do some safety checks on the motors etc...
         // Check the motor currents. If any are high then shut everything down and let the user know
         if (clubMotor.getCurrent(CurrentUnit.MILLIAMPS) > GolfBotMotionConstants.maxClubCurrent) {
@@ -539,6 +608,104 @@ public class GolfBotSimple extends LinearOpMode {
          * constantly allocating and freeing large chunks of memory.
          */
 
+        /**
+         * Get largest contour index in list of OpenCV contours
+         * @param contours contours to search
+         * @return contour index
+         */
+        private int getLargestContourIndex(List<MatOfPoint> contours) {
+            // Now search the list for the new largest "blob"
+            double largest_area = 0.0;
+            int largest_contour_index = -1;
+
+            for (int i = 0; i < contours.size(); i++) {// iterate through each contour.
+                double area = Imgproc.contourArea(contours.get(i),false); // Find the area of contour
+                if ((area > largest_area) && (area > GolfBotVisionConstants.minBallArea)) {
+                    largest_area=area;
+                    largest_contour_index=i; // Store the index of largest contour
+                }
+            }
+
+            return largest_contour_index;
+        }
+
+        /**
+         * Get largest contour area in list of OpenCV contours
+         * @param contours contours to search
+         * @return contour area
+         */
+        private double getLargestContourArea(List<MatOfPoint> contours) {
+            // Now search the list for the new largest "blob"
+            double largest_area = 0.0;
+
+            for (int i = 0; i < contours.size(); i++) {// iterate through each contour.
+                double area = Imgproc.contourArea(contours.get(i),false); // Find the area of contour
+                if ((area > largest_area) && (area > GolfBotVisionConstants.minBallArea)) {
+                    largest_area=area;
+                }
+            }
+
+            return largest_area;
+        }
+
+        /**
+         * Get centers of contour "blobs"
+         * @param contours contours to search
+         * @return contour centers
+         */
+        private Point[] getContourCenters(List<MatOfPoint> contours) {
+            MatOfPoint2f[] contoursPoly = new MatOfPoint2f[contours.size()];
+            Point[] centers = new Point[contours.size()];
+
+            for (int i = 0; i < contours.size(); i++) {
+                contoursPoly[i] = new MatOfPoint2f();
+                Imgproc.approxPolyDP(new MatOfPoint2f(contours.get(i).toArray()), contoursPoly[i], 3, true);
+                centers[i] = new Point();
+                Imgproc.minEnclosingCircle(contoursPoly[i], centers[i], null);
+            }
+
+            return centers;
+        }
+
+        /**
+         * Get radii of contour "blobs"
+         * @param contours contours to search
+         * @return contour radii
+         */
+        private float[][] getContourRadii(List<MatOfPoint> contours) {
+            MatOfPoint2f[] contoursPoly = new MatOfPoint2f[contours.size()];
+            float[][] radii = new float[contours.size()][1];
+
+            for (int i = 0; i < contours.size(); i++) {
+                contoursPoly[i] = new MatOfPoint2f();
+                Imgproc.approxPolyDP(new MatOfPoint2f(contours.get(i).toArray()), contoursPoly[i], 3, true);
+                Imgproc.minEnclosingCircle(contoursPoly[i], null, radii[i]);
+            }
+
+            return radii;
+        }
+
+        /**
+         * Get contour polygons
+         * @param contours contours to search
+         * @return contour polys
+         */
+        private List<MatOfPoint> getContourPolys(List<MatOfPoint> contours) {
+            MatOfPoint2f[] contoursPoly = new MatOfPoint2f[contours.size()];
+
+            for (int i = 0; i < contours.size(); i++) {
+                contoursPoly[i] = new MatOfPoint2f();
+                Imgproc.approxPolyDP(new MatOfPoint2f(contours.get(i).toArray()), contoursPoly[i], 3, true);
+                Imgproc.minEnclosingCircle(contoursPoly[i], null, null);
+            }
+            List<MatOfPoint> contoursPolyList = new ArrayList<>(contoursPoly.length);
+            for (MatOfPoint2f poly : contoursPoly) {
+                contoursPolyList.add(new MatOfPoint(poly.toArray()));
+            }
+
+            return contoursPolyList;
+        }
+
         @Override
         public Mat processFrame(Mat input) {
             /*
@@ -548,83 +715,60 @@ public class GolfBotSimple extends LinearOpMode {
              * of this particular frame for later use, you will need to either clone it or copy
              * it to another Mat.
              */
-
-            boolean foundBall = false;
             Mat DisplayImage = input.clone();
 
             //Convert to HSV for better color range definition
             Imgproc.cvtColor(input, input, Imgproc.COLOR_RGB2HSV);
 
             //Filter pixels outside the desired color range
-            Scalar color_lower = new Scalar(GolfBotBallConstants.color_lower_h, GolfBotBallConstants.color_lower_s, GolfBotBallConstants.color_lower_v);
-            Scalar color_upper = new Scalar(GolfBotBallConstants.color_upper_h, GolfBotBallConstants.color_upper_s, GolfBotBallConstants.color_upper_v);
+            Scalar color_lower = new Scalar(GolfBotVisionConstants.color_lower_h, GolfBotVisionConstants.color_lower_s, GolfBotVisionConstants.color_lower_v);
+            Scalar color_upper = new Scalar(GolfBotVisionConstants.color_upper_h, GolfBotVisionConstants.color_upper_s, GolfBotVisionConstants.color_upper_v);
             Core.inRange(input, color_lower, color_upper, input);
 
             //De-speckle the image
-            Mat element = Imgproc.getStructuringElement(GolfBotBallConstants.elementType,
-                                                        new Size(2 * GolfBotBallConstants.kernelSize + 1,
-                                                                 2 * GolfBotBallConstants.kernelSize + 1),
-                                                        new Point(GolfBotBallConstants.kernelSize,
-                                                                GolfBotBallConstants.kernelSize));
+            Mat element = Imgproc.getStructuringElement(GolfBotVisionConstants.elementType,
+                                                        new Size(2 * GolfBotVisionConstants.kernelSize + 1,
+                                                                 2 * GolfBotVisionConstants.kernelSize + 1),
+                                                        new Point(GolfBotVisionConstants.kernelSize,
+                                                                GolfBotVisionConstants.kernelSize));
             Imgproc.erode(input, input, element);
 
-            //Find blobs in the image. Actually finds a list of contours which will need to be processed later
+            // Find blobs in the image. Actually finds a list of contours which will need to be processed later
             List<MatOfPoint> contours = new ArrayList<>();
             final Mat hierarchy = new Mat();
             Imgproc.findContours(input, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
-            //Now search the list for the largest "blob"
-            double largest_area = 0.0;
-            int largest_contour_index = -1;
-            for (int i = 0; i< contours.size(); i++) {// iterate through each contour.
-                double a=Imgproc.contourArea( contours.get(i),false);  //  Find the area of contour
-                if((a>largest_area) && (a>GolfBotBallConstants.minBallArea)){
-                    foundBall = true;
-                    largest_area=a;
-                    largest_contour_index=i;                //Store the index of largest contour
-                }
-            }
-            GolfBotIPCVariables.foundBallArea = largest_area;
+            // Filter out blobs larger than maxBallArea
+            contours.removeIf(c -> (Imgproc.contourArea(c) > GolfBotVisionConstants.maxBallArea));
+
+            // Get largest contour (hopefully ball)
+            int largest_contour_index = getLargestContourIndex(contours);
+            GolfBotIPCVariables.foundBallArea = getLargestContourArea(contours);
+            boolean foundBall = largest_contour_index > -1;
 
             // Find the contours and bounding regions
-            MatOfPoint2f[] contoursPoly = new MatOfPoint2f[contours.size()];
-            Point[] centers = new Point[contours.size()];
-            float[][] radius = new float[contours.size()][1];
-
-            for (int i = 0; i < contours.size(); i++) {
-                contoursPoly[i] = new MatOfPoint2f();
-                Imgproc.approxPolyDP(new MatOfPoint2f(contours.get(i).toArray()), contoursPoly[i], 3, true);
-                centers[i] = new Point();
-                Imgproc.minEnclosingCircle(contoursPoly[i], centers[i], radius[i]);
-            }
-            List<MatOfPoint> contoursPolyList = new ArrayList<>(contoursPoly.length);
-            for (MatOfPoint2f poly : contoursPoly) {
-                contoursPolyList.add(new MatOfPoint(poly.toArray()));
-            }
+            Point[] centers = getContourCenters(contours);
+            float[][] radii = getContourRadii(contours);
+            List<MatOfPoint> contoursPolyList = getContourPolys(contours);
 
             // Draw shape and/or contour on original image
-            int R;
-            int G;
-            int B;
+            Scalar color;
             for (int i = 0; i < contours.size(); i++) {
                 if (i == largest_contour_index) {
-                     R = 0;
-                     G = 255;
-                     B = 0;
-                 } else {
-                     R = 255;
-                     G = 0;
-                     B = 0;
-                 }
-                 Scalar color = new Scalar(R, G, B);
-                if (GolfBotBallConstants.drawContours == 1) {
+                    color = new Scalar(0, 255, 0);
+                } else {
+                    color = new Scalar(255, 0, 0);
+                }
+
+                if (GolfBotVisionConstants.drawContours) {
                     Imgproc.drawContours(DisplayImage, contoursPolyList, i, color);
                 }
-                if (GolfBotBallConstants.drawCircle == 1) {
-                    Imgproc.circle(DisplayImage, centers[i], (int) radius[i][0], color, 2);
+                if (GolfBotVisionConstants.drawCircle) {
+                    Imgproc.circle(DisplayImage, centers[i], (int) radii[i][0], color, 2);
                 }
             }
 
+            // IPC
             GolfBotIPCVariables.ballExists = foundBall;
 
             if (foundBall) {
